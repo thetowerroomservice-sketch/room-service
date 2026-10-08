@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Your hotel name — Room Service</title><!-- 🔧 ДЛЯ НОВОГО ПРОЕКТА: название отеля -->
+  <meta name="theme-color" content="#0b0d11">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Your hotel name"><!-- 🔧 короткое имя на иконке Домой; лого: ./images/apple-touch-icon.png (180×180 PNG) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="./images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./images/icon-192.png">
+  <link rel="manifest" href="./site.webmanifest">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    // Жёсткая блокировка зума (страховка поверх meta viewport для Android/WebView)
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('touchmove', function (e) {
+      if (e.touches && e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+    (function () {
+      var lastTouchEnd = 0;
+      var lastX = 0, lastY = 0;
+      document.addEventListener('touchend', function (e) {
+        var now = Date.now();
+        var t = e.changedTouches && e.changedTouches[0];
+        var x = t ? t.clientX : 0;
+        var y = t ? t.clientY : 0;
+        var sameSpot = Math.abs(x - lastX) < 30 && Math.abs(y - lastY) < 30;
+        if (now - lastTouchEnd <= 350 && sameSpot) e.preventDefault();
+        lastTouchEnd = now;
+        lastX = x; lastY = y;
+      }, { passive: false });
+    })();
+
+    // Блокировка зума колесом мыши с Ctrl (desktop) и клавиатурой (Ctrl +/-/0)
+    document.addEventListener('wheel', function (e) {
+      if (e.ctrlKey) e.preventDefault();
+    }, { passive: false });
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0'].includes(e.key)) {
+        e.preventDefault();
+      }
+    });
+
+    // iOS Safari баг: после фокуса на <input type="date">, <input type="time"> или <select>
+    // страница иногда "залипает" в увеличенном масштабе, даже если в meta viewport стоит
+    // maximum-scale=1 и user-scalable=no. Фикс: при потере фокуса полем принудительно
+    // пересобираем meta viewport, это заставляет Safari сбросить масштаб обратно к 1.
+    (function () {
+      var VP_BASE = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+      function resetIOSZoom() {
+        var vp = document.querySelector('meta[name="viewport"]');
+        if (!vp) return;
+        vp.setAttribute('content', VP_BASE + ', maximum-scale=0.999');
+        setTimeout(function () {
+          vp.setAttribute('content', VP_BASE);
+        }, 300);
+      }
+      document.addEventListener('focusout', function (e) {
+        var tag = e.target && e.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+          setTimeout(resetIOSZoom, 60);
+        }
+      }, true);
+      window.addEventListener('pageshow', resetIOSZoom);
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) resetIOSZoom();
+      });
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0d11;
+      --surface: #14171e;
+      --elevated: #1c2028;
+      --fg: #f3eee6;
+      --muted: #9b958c;
+      --accent: #e6ddd0;
+      --accent-fg: #0b0d11;
+      --border: rgba(243,238,230,.12);
+      --danger: #c45b4a;
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+      --sans: "Manrope", system-ui, sans-serif;
+      --display: "Cormorant Garamond", Georgia, serif;
+      --r-sm: 8px;
+      --r-md: 12px;
+      --r-lg: 20px;
+      --r-xl: 28px;
+    }
+    html[data-theme="light"] {
+      --bg: #f3eee6;
+      --surface: #fffdf9;
+      --elevated: #ebe4d8;
+      --fg: #161410;
+      --muted: #6f6a63;
+      --accent: #1c1a16;
+      --accent-fg: #f3eee6;
+      --border: rgba(22,20,16,.12);
+      --danger: #a33b2c;
+      --shadow: 0 18px 40px rgba(22,20,16,.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { min-height: 100%; background: var(--elevated); color: var(--fg); font-family: var(--sans); -webkit-font-smoothing: antialiased; touch-action: manipulation; }
+    button { font-family: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    input, textarea, select { font-family: inherit; color: var(--fg); background: var(--elevated); border: 1px solid var(--border); border-radius: var(--r-md); min-height: 44px; height: 44px; width: 100%; padding: 0 12px; outline: none; font-size: 16px; line-height: 44px; -webkit-appearance: none; appearance: none; }
+    textarea { min-height: 88px; height: auto; line-height: 1.4; padding: 10px 12px; resize: none; }
+    select { padding-right: 32px; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%239b958c' d='M1 1l5 5 5-5'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; }
+    input[type="time"], input[type="date"] { text-align: left; max-height: 44px; }
+    input[type="time"]::-webkit-date-and-time-value,
+    input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 0; height: 44px; }
+    input[type="time"]::-webkit-datetime-edit,
+    input[type="date"]::-webkit-datetime-edit { padding: 0; }
+    img { max-width: 100%; display: block; }
+    .app { max-width: 430px; margin: 0 auto; min-height: 100dvh; background: var(--bg); position: relative; box-shadow: var(--shadow); }
+    .top-chrome { position: absolute; inset: max(.5rem, env(safe-area-inset-top)) 12px auto; z-index: 30; display: flex; justify-content: space-between; }
+    .chip, .icon-btn {
+      min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 0 14px; border-radius: 999px; border: 1px solid var(--border); background: color-mix(in oklab, var(--bg) 55%, transparent); backdrop-filter: blur(12px); font-size: 14px; font-weight: 500;
+    }
+    .icon-btn { width: 44px; padding: 0; }
+    .lang-menu { position: absolute; top: 58px; left: 12px; z-index: 40; width: 200px; max-height: 320px; overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow); }
+    [dir="rtl"] .lang-menu { left: auto; right: 12px; }
+    .lang-opt { display: flex; justify-content: space-between; width: 100%; padding: 10px 12px; font-size: 14px; color: var(--muted); }
+    .lang-opt.on { background: var(--elevated); color: var(--fg); }
+    .hero { position: relative; height: 320px; overflow: hidden; border-radius: 0 0 var(--r-xl) var(--r-xl); }
+    .hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .7s ease; pointer-events: none; }
+    .hero img.on { opacity: 1; }
+    .hero-grad { position: absolute; inset: 0; background: linear-gradient(to top, var(--bg) 8%, color-mix(in oklab, var(--bg) 45%, transparent) 50%, transparent 78%); pointer-events: none; }
+    .hero-copy { position: absolute; left: 20px; right: 20px; bottom: 22px; pointer-events: auto; z-index: 2; }
+    .eyebrow { font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: color-mix(in oklab, var(--accent) 80%, transparent); font-weight: 500; }
+    h1 { font-family: var(--display); font-size: 52px; font-weight: 500; line-height: .95; letter-spacing: -.03em; }
+    .tagline { margin-top: 8px; font-size: 14px; color: var(--muted); }
+    .room-chip { margin-top: 16px; display: inline-flex; min-height: 44px; align-items: center; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border); background: color-mix(in oklab, var(--bg) 50%, transparent); backdrop-filter: blur(10px); font-size: 14px; }
+    .room-chip span { color: var(--muted); margin-right: 8px; }
+    .dots { position: absolute; right: 20px; bottom: 12px; display: flex; gap: 6px; }
+    .dots b { width: 6px; height: 6px; border-radius: 99px; background: color-mix(in oklab, var(--fg) 35%, transparent); display: block; }
+    .dots b.on { width: 20px; background: var(--accent); }
+    .pad { padding: 20px 16px 140px; }
+    .wifi { width: 100%; display: flex; align-items: center; gap: 16px; text-align: start; padding: 16px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--r-lg); }
+    .ico { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-md); background: var(--elevated); flex-shrink: 0; }
+    .wifi strong { display: block; font-size: 14px; }
+    .wifi small { color: var(--muted); font-size: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .feat { position: relative; min-height: 148px; overflow: hidden; border-radius: var(--r-lg); text-align: start; color: #f3eee6; }
+    .feat.wide { grid-column: 1 / -1; min-height: 160px; }
+    .feat img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .feat .shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(11,13,17,.92), rgba(11,13,17,.2), transparent); }
+    .feat .lbl { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 26px; line-height: 1; }
+    .svc { min-height: 112px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: start; padding: 16px; background: var(--surface); border-radius: var(--r-lg); }
+    .svc.wide { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 12px; }
+    .svc span { font-size: 14px; font-weight: 500; line-height: 1.3; }
+    .svc { position: relative; }
+    .svc .oos { position: absolute; top: 10px; right: 10px; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); padding: 3px 7px; border-radius: 999px; }
+    .hidden { display: none !important; }
+    #nearbyScreen, #menuScreen { min-height: 100dvh; }
+    .menu-head { position: sticky; top: 0; z-index: 20; padding: max(.75rem, env(safe-area-inset-top)) 12px 12px; background: color-mix(in oklab, var(--bg) 90%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    .menu-head .row { display: flex; align-items: center; gap: 4px; }
+    .menu-head h2 { font-family: var(--display); font-size: 26px; font-weight: 500; }
+    .cats { display: flex; gap: 8px; overflow-x: auto; margin-top: 12px; scrollbar-width: none; }
+    .cats::-webkit-scrollbar { display: none; }
+    .cat { flex-shrink: 0; padding: 8px 14px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 14px; }
+    .cat.on { background: var(--accent); color: var(--accent-fg); }
+    .list { padding: 16px 16px 140px; display: flex; flex-direction: column; gap: 10px; }
+    .group { font-family: var(--display); font-size: 22px; margin: 10px 0 4px; }
+    .sub { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 8px 0 4px; }
+    .item { display: flex; gap: 12px; padding: 10px; background: var(--surface); border-radius: var(--r-lg); }
+    .item img, .ph { width: 96px; height: 96px; object-fit: cover; border-radius: var(--r-md); background: var(--elevated); flex-shrink: 0; }
+    .item h3 { font-size: 14px; font-weight: 500; line-height: 1.3; }
+    .item .bot { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+    .price { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .qty { display: inline-flex; height: 44px; align-items: center; border-radius: 999px; background: var(--elevated); }
+    .qty button, .add { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+    .add { width: 44px; height: 44px; background: var(--accent); color: var(--accent-fg); }
+    .qty b { min-width: 22px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .cart { position: fixed; left: 50%; transform: translateX(-50%); bottom: 84px; width: min(398px, calc(100% - 32px)); z-index: 35; display: none; min-height: 56px; align-items: center; justify-content: space-between; padding: 0 20px; border-radius: 999px; background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow); font-size: 14px; font-weight: 500; }
+    .cart.show { display: flex; }
+    .sheet { position: fixed; inset: 0; z-index: 50; display: none; }
+    .sheet.open { display: block; }
+    .sheet .ov { position: absolute; inset: 0; background: color-mix(in oklab, var(--bg) 60%, transparent); backdrop-filter: blur(6px); }
+    .sheet .box { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: min(430px, 100%); max-height: 88dvh; overflow: auto; background: var(--surface); border: 1px solid var(--border); border-bottom: 0; border-radius: var(--r-xl) var(--r-xl) 0 0; padding: 12px 20px max(24px, env(safe-area-inset-bottom)); }
+    .handle { width: 40px; height: 4px; border-radius: 99px; background: var(--border); margin: 4px auto 12px; }
+    .sheet h2 { font-family: var(--display); font-size: 28px; font-weight: 500; margin-bottom: 14px; }
+    .field { display: block; margin-bottom: 12px; }
+    .field > span { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn { width: 100%; min-height: 48px; border-radius: var(--r-lg); background: var(--accent); color: var(--accent-fg); font-size: 16px; font-weight: 600; }
+    .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--fg); margin-top: 10px; }
+    .btn:disabled { opacity: .5; }
+    .toast { position: fixed; left: 50%; top: max(16px, env(safe-area-inset-top)); transform: translateX(-50%) translateY(-20px); z-index: 80; background: var(--surface); border: 1px solid var(--border); color: var(--fg); padding: 12px 16px; border-radius: 999px; opacity: 0; pointer-events: none; transition: .25s ease; font-size: 14px; }
+    .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+ .load { position: fixed; inset: 0; z-index: 90; display: none; align-items: center; justify-content: center; background: color-mix(in oklab, var(--bg) 55%, transparent); }
+.load.on { display: flex; }
+.load-mark { position: relative; width: 160px; height: 160px; display: flex; align-items: center; justify-content: center; }
+.spin-logo { width: 140px; height: 140px; object-fit: contain; animation: logoPulse 2.5s ease-in-out infinite; }
+@keyframes logoPulse { 0%, 100% { opacity: .7; transform: scale(.97); } 50% { opacity: 1; transform: scale(1); } }
+    .wifi-box { background: var(--elevated); border-radius: var(--r-lg); padding: 16px; margin-bottom: 14px; }
+    .wifi-box small { display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+    .wifi-box p { margin: 4px 0 12px; font-size: 18px; font-weight: 500; }
+    .wifi-box .pw { font-family: var(--display); font-size: 32px; letter-spacing: .04em; }
+    .stars { display: flex; justify-content: center; gap: 4px; margin: 8px 0 16px; }
+    .stars button { width: 44px; height: 44px; font-size: 28px; color: var(--muted); }
+    .stars button.on { color: var(--accent); }
+    .line { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .line img { width: 56px; height: 56px; object-fit: cover; border-radius: var(--r-sm); background: var(--elevated); }
+    .line .nm { font-size: 14px; font-weight: 500; }
+    .tot { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--border); padding-top: 14px; margin: 8px 0 14px; }
+    .tot b { font-family: var(--display); font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .muted { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 14px; }
+    .dial { font-family: var(--display); font-size: 36px; margin-bottom: 16px; }
+    .empty { text-align: center; color: var(--muted); padding: 48px 16px; }
+    .clear { width: 100%; padding: 12px; color: var(--muted); font-size: 14px; }
+    .date-picker-wrap { position: relative; }
+    .date-hidden { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; border: 0; padding: 0; margin: 0; }
+    .date-display { font-family: inherit; color: var(--fg); background: var(--elevated); border: 1px solid var(--border); border-radius: var(--r-md); height: 44px; min-height: 44px; width: 100%; padding: 0 12px; font-size: 16px; text-align: left; cursor: pointer; display: flex; align-items: center; justify-content: flex-start; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+    /* ---- МАЛЕНЬКИЕ ЭКРАНЫ (iPhone SE, компактные Android ~360px и уже) ----
+       Плотнее отступы и чуть меньше шрифты, чтобы карточки и текст не сжимались
+       в кашу. Дефолтные значения выше рассчитаны на экраны от ~380px и шире. */
+    @media (max-width: 380px) {
+      .pad { padding: 16px 12px 130px; }
+      .list { padding: 12px 12px 130px; }
+      .menu-head { padding-left: 10px; padding-right: 10px; }
+      .grid { gap: 8px; }
+      .cats { gap: 6px; }
+      .hero { height: 260px; }
+      h1 { font-size: 40px; }
+      .feat.wide { min-height: 140px; }
+      .feat { min-height: 130px; }
+      .svc { min-height: 100px; padding: 12px; }
+      .item { padding: 8px; gap: 10px; }
+      .item img, .ph { width: 80px; height: 80px; }
+      .sheet .box { padding: 12px 14px max(20px, env(safe-area-inset-bottom)); }
+      .cart { bottom: 76px; width: min(398px, calc(100% - 20px)); padding: 0 14px; }
+    }
+
+    /* Длинные названия блюд (особенно на немецком/арабском/китайском без пробелов)
+       не должны вылезать за рамки карточки — переносим по словам/символам. */
+    .item h3, .nm { overflow-wrap: anywhere; }
+    .item > div { min-width: 0; }
+
+    /* iPad / tablet — только раскладка, без смены контента */
+    @media (min-width: 768px) {
+      html, body { background: var(--bg); }
+      .app { max-width: none; width: 100%; box-shadow: none; }
+      .hero { height: 420px; }
+      h1 { font-size: 72px; }
+      .pad { padding: 28px 28px 140px; }
+      .grid { grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+      .feat { min-height: 220px; }
+      .feat.wide { grid-column: span 2; min-height: 220px; }
+      .feat .lbl { font-size: 32px; left: 16px; bottom: 16px; }
+      .svc { min-height: 128px; padding: 18px; }
+      .svc.wide { grid-column: auto; flex-direction: column; align-items: flex-start; }
+      .wifi { padding: 18px 20px; }
+      .menu-head { padding-left: 24px; padding-right: 24px; }
+      .menu-head h2 { font-size: 34px; }
+      .list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 20px 24px 140px; }
+      .list .group, .list .sub, .list .empty { grid-column: 1 / -1; }
+      .item { padding: 12px; }
+      .item img, .ph { width: 108px; height: 108px; }
+      .sheet .box {
+        top: 50%;
+        bottom: auto;
+        transform: translate(-50%, -50%);
+        width: min(460px, 86vw);
+        max-height: 78dvh;
+        border-radius: var(--r-xl);
+        border-bottom: 1px solid var(--border);
+        padding: 20px 24px 24px;
+      }
+      .handle { display: none; }
+      .cart { bottom: max(24px, env(safe-area-inset-bottom)); width: min(420px, 70%); }
+      .top-chrome { inset: max(1rem, env(safe-area-inset-top)) 20px auto; }
+      .lang-menu { top: 64px; left: 20px; }
+    }
+
+    /* iPad landscape */
+    @media (min-width: 900px) and (orientation: landscape) {
+      #home {
+        display: grid;
+        grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.1fr);
+        min-height: 100dvh;
+      }
+      .hero {
+        height: 100dvh;
+        position: relative;
+        top: 0;
+        border-radius: 0;
+        z-index: 0;
+      }
+      .pad {
+        padding: 72px 32px 120px;
+        max-height: 100dvh;
+        overflow: auto;
+        position: relative;
+        z-index: 2;
+      }
+      .grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+      .feat.wide { grid-column: auto; min-height: 200px; }
+      .feat { min-height: 200px; }
+      .list { padding: 20px 32px 140px; }
+      h1 { font-size: 64px; }
+    }
+
+    /* What's Nearby — mock UI. Swap NEARBY_PLACES for Supabase later. */
+    .place-list {
+      padding: 16px 16px 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .place-card {
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+    }
+    .place-carousel {
+      position: relative;
+      height: 210px;
+      overflow: hidden;
+      background: var(--elevated);
+      touch-action: pan-y;
+    }
+    .place-carousel img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity .55s ease;
+    }
+    .place-carousel img.on { opacity: 1; }
+    .place-dots {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      display: flex;
+      gap: 6px;
+      z-index: 2;
+    }
+    .place-dots b {
+      width: 6px;
+      height: 6px;
+      border-radius: 99px;
+      background: color-mix(in oklab, #f3eee6 40%, transparent);
+      display: block;
+      cursor: pointer;
+    }
+    .place-dots b.on { width: 18px; background: #f3eee6; }
+    .place-body { padding: 14px 16px 16px; }
+    .place-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .place-type {
+      font-size: 11px;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .place-dist {
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .place-name {
+      font-family: var(--display);
+      font-size: 28px;
+      font-weight: 500;
+      line-height: 1.05;
+      letter-spacing: -.02em;
+      margin: 6px 0 14px;
+      overflow-wrap: anywhere;
+    }
+    .place-card .btn { min-height: 44px; font-size: 14px; }
+    @media (max-width: 380px) {
+      .place-carousel { height: 176px; }
+      .place-name { font-size: 24px; }
+      .place-list { padding: 12px 12px 130px; }
+    }
+    @media (min-width: 768px) {
+      .place-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        padding: 20px 24px 140px;
+      }
+      .place-carousel { height: 240px; }
+      .place-name { font-size: 32px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top-chrome" id="homeChrome">
+      <button class="chip" id="langBtn">RU</button>
+      <button class="icon-btn" id="themeBtn" aria-label="theme">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+    </div>
+    <div class="lang-menu hidden" id="langMenu"></div>
+
+    <section id="home">
+      <div class="hero" id="hero">
+        <img class="on" src="./images/balcony.jpg" alt="">
+        <img src="./images/break.jpg" alt="">
+        <img src="./images/image.png" alt="">
+        <img src="./images/balcony2.jpg" alt="">
+        <div class="hero-grad"></div>
+        <div class="hero-copy">
+          <!-- 🔧 ДЛЯ НОВОГО ПРОЕКТА: название отеля -->
+          <p class="eyebrow">Your hotel name</p>
+          <h1 id="heroTitle">Your hotel name</h1>
+          <p class="tagline" data-i18n="tagline">Сервис в номер</p>
+          <button class="room-chip" id="roomChip"><span data-i18n="room_key">Номер:</span> <b class="room-number">1208</b></button>
+        </div>
+        <div class="dots" id="dots"></div>
+      </div>
+      <div class="pad">
+        <button class="wifi" data-open="wifi">
+          <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg></span>
+          <span><strong data-i18n="wifi_title">Бесплатный Wi-Fi</strong><small data-i18n="wifi_subtitle">Нажмите, чтобы получить пароль</small></span>
+        </button>
+        <div class="grid">
+          <button class="feat wide" id="openMenu">
+            <img src="./images/IMG_5825.jpeg" alt="">
+            <span class="shade"></span>
+            <span class="lbl" data-i18n="service_menu">Меню</span>
+          </button>
+          <button class="feat" id="openBar">
+            <img src="./images/negroni.jfif" alt="">
+            <span class="shade"></span>
+            <span class="lbl" data-i18n="service_bar">Бар</span>
+          </button>
+          <button class="feat" id="openNearby">
+            <img src="./images/whats-nearby.jpg" alt="">
+            <span class="shade"></span>
+            <span class="lbl" data-i18n="service_nearby">Что рядом</span>
+          </button>
+          <button class="svc" data-open="housekeeping"><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20v-6M12 20V10M19 20V4"/></svg></span><span data-i18n="service_hotel">Housekeeping</span></button>
+          <button class="svc" data-open="taxi"><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18l-1.5 6.5a2 2 0 0 1-2 1.5H6.5a2 2 0 0 1-2-1.5Z"/><path d="M5 11 7 6h10l2 5"/><circle cx="7.5" cy="18" r="1.5"/><circle cx="16.5" cy="18" r="1.5"/></svg></span><span data-i18n="service_taxi">Такси</span></button>
+          <button class="svc" data-open="reception"><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span><span data-i18n="service_reception">Ресепшн</span></button>
+          <button class="svc" data-open="problem"><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span><span data-i18n="service_problem">Проблема</span></button>
+          <button class="svc" data-open="alarm"><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M22 6l-3-3"/></svg></span><span data-i18n="service_alarm">Будильник</span></button>
+          <button class="svc" id="wellnessBtn" data-open="wellness"><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15c2.5-3 5-4.5 8-4.5S17.5 12 20 15"/><path d="M2 19c3-4 6.5-6 10-6s7 2 10 6"/><circle cx="12" cy="7" r="2.2"/></svg></span><span data-i18n="service_wellness">Бассейн и сауна</span><b class="oos hidden" id="wellnessOos" data-i18n="wellness_oos">Out of service</b></button>
+          <button class="svc" data-open="review"><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span><span data-i18n="service_review">Отзыв</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="menuScreen" class="hidden">
+      <div class="menu-head">
+        <div class="row">
+          <button class="icon-btn" id="backBtn" aria-label="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <div style="flex:1">
+            <h2 id="menuTitle">Меню</h2>
+            <p class="tagline" data-i18n="in_room">В номер</p>
+          </div>
+          <button class="chip" id="langBtn2">RU</button>
+          <button class="icon-btn" id="themeBtn2">◐</button>
+        </div>
+        <div class="cats" id="cats"></div>
+      </div>
+      <div class="list" id="menuList"></div>
+    </section>
+    <section id="nearbyScreen" class="hidden">
+      <div class="menu-head">
+        <div class="row">
+          <button class="icon-btn" id="backBtnNearby" aria-label="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <div style="flex:1">
+            <h2 data-i18n="nearby_title">Рядом</h2>
+            <p class="tagline" data-i18n="nearby_tagline">Вокруг отеля</p>
+          </div>
+          <button class="chip" id="langBtn3">RU</button>
+          <button class="icon-btn" id="themeBtn3">◐</button>
+        </div>
+      </div>
+      <div class="place-list" id="placeList"></div>
+    </section>
+  </div>
+
+  <button class="cart" id="cartBar"><span id="cartCount">0</span> <span data-i18n="cart_items">позиции</span><b id="cartTotalSum">0</b></button>
+  <div class="toast" id="toast"></div>
+  <div class="load" id="load"><span class="load-mark"><img class="spin-logo" src="./images/logo.PNG" alt=""></span></div>
+
+  <div class="sheet" id="sheet-wifi"><div class="ov"></div><div class="box"><div class="handle"></div><h2>Wi-Fi</h2><div class="wifi-box"><small data-i18n="wifi_network">Сеть</small><p>Your hotel name</p><small data-i18n="wifi_password">Пароль</small><div class="pw" id="wifiPass">demo-wifi-pass</div></div><button class="btn" id="copyWifi" data-i18n="wifi_copy">Скопировать</button></div></div>
+  <div class="sheet" id="sheet-housekeeping"><div class="ov"></div><div class="box"><div class="handle"></div><h2 data-i18n="hk_title">Housekeeping</h2><p class="muted" data-i18n="hk_hours_warn">Хаускипинг работает с 08:00 до 20:00</p><button class="btn" id="hkMaids" data-i18n="hk_call_maids">Позвать горничных</button><button class="btn ghost" id="hkClean" data-i18n="hk_clean_room">Убраться</button></div></div>
+  <div class="sheet" id="sheet-reception"><div class="ov"></div><div class="box"><div class="handle"></div><h2 data-i18n="service_reception">Ресепшн</h2><p class="muted" data-i18n="reception_hint">Стойка ответит на 1111.</p><div class="dial" data-i18n="reception_number">Ресепшн · 1111</div><button class="btn" id="callReception" data-i18n="reception_call">Вызвать ресепшн</button></div></div>
+  <div class="sheet" id="sheet-alarm"><div class="ov"></div><div class="box"><div class="handle"></div><h2 data-i18n="alarm_title">Будильник</h2><div class="row-2"><label class="field"><span data-i18n="alarm_time_label">Время</span><input type="time" id="alarmTime" value="08:00"></label><label class="field"><span data-i18n="alarm_date_label">Дата</span><div class="date-picker-wrap"><input type="date" id="alarmDate" class="date-hidden"><div class="date-display" id="alarmDateDisplay"></div></div></label></div><label class="field"><span data-i18n="alarm_note_label">Примечание</span><textarea id="alarmNote"></textarea></label><button class="btn" id="sendAlarm" data-i18n="alarm_send">Установить</button></div></div>
+  <div class="sheet" id="sheet-wellness"><div class="ov"></div><div class="box"><div class="handle"></div><h2 data-i18n="wellness_title">Бассейн, сауна, хаммам</h2><p class="muted" id="wellnessHours" data-i18n="wellness_hours">Работает с 10:00 до 22:00</p><p class="muted hidden" id="wellnessClosed" data-i18n="wellness_closed">Сейчас не работает</p><label class="field"><span data-i18n="wellness_time_label">Время визита</span><input type="time" id="wellnessTime" value="12:00"></label><button class="btn" id="sendWellness" data-i18n="wellness_send">Забронировать</button></div></div>
+  <div class="sheet" id="sheet-taxi"><div class="ov"></div><div class="box"><div class="handle"></div><h2 data-i18n="taxi_title">Такси</h2><label class="field"><span data-i18n="taxi_dest_label">Куда</span><input id="taxiDest"></label><div class="row-2"><label class="field"><span data-i18n="alarm_date_label">Дата</span><div class="date-picker-wrap"><input type="date" id="taxiDate" class="date-hidden"><div class="date-display" id="taxiDateDisplay"></div></div></label><label class="field"><span data-i18n="taxi_time_label">Время</span><input type="time" id="taxiTime" value="12:00"></label></div><label class="field"><span data-i18n="taxi_passengers_label">Пассажиры</span><select id="taxiPassengers"><option>1</option><option>2</option><option>3</option><option>4+</option></select></label><button class="btn" id="sendTaxi" data-i18n="taxi_send">Заказать такси</button></div></div>
+  <div class="sheet" id="sheet-review"><div class="ov"></div><div class="box"><div class="handle"></div><h2 data-i18n="review_title">Отзыв</h2><p class="muted" data-i18n="review_rating_label">Оценка</p><div class="stars" id="stars"></div><label class="field"><span data-i18n="review_comment_label">Комментарий</span><textarea id="reviewComment"></textarea></label><button class="btn" id="sendReview" data-i18n="review_send">Отправить отзыв</button></div></div>
+  <div class="sheet" id="sheet-problem"><div class="ov"></div><div class="box"><div class="handle"></div><h2 data-i18n="problem_title">Проблема</h2><label class="field"><span data-i18n="problem_comment_label">Описание</span><textarea id="problemComment"></textarea></label><button class="btn" id="sendProblem" data-i18n="problem_send">Отправить</button></div></div>
+  <div class="sheet" id="sheet-room"><div class="ov"></div><div class="box"><div class="handle"></div><h2 data-i18n="set_room">Номер комнаты</h2><label class="field"><span data-i18n="set_room">Номер</span><input id="roomInput"></label><button class="btn" id="saveRoom" data-i18n="room_save">Сохранить</button></div></div>
+  <div class="sheet" id="sheet-cart"><div class="ov"></div><div class="box"><div class="handle"></div><h2 data-i18n="modal_title">Ваш заказ</h2><div id="cartItems"></div><div class="tot"><span data-i18n="modal_total">Итого:</span><b id="modalTotal">0</b></div><label class="field"><span data-i18n="order_note_label">Примечание</span><textarea id="orderNote"></textarea></label><button class="btn" id="sendOrder" data-i18n="modal_send">Отправить заказ</button><button class="clear" id="clearCart" data-i18n="clear_cart">Очистить корзину</button></div></div>
+
+<script>
+/* ============================================================================
+   📌 ЗАМЕТКА ПРО КОПИРОВАНИЕ ЭТОГО ПРОЕКТА ПОД НОВЫЙ ОБЪЕКТ/ОТЕЛЬ
+   (для себя, для другого ИИ-ассистента, или просто чтобы не перечитывать
+   весь файл заново — ниже ПОЛНЫЙ список всего, что специфично именно
+   для "Your hotel name" и должно поменяться при клоне проекта.
+   Всё остальное в этом файле — универсальная логика, одинаковая для
+   любого отеля, её трогать НЕ нужно.)
+
+   1) ДОСТУПЫ (без этого сайт не заработает вообще):
+      - SUPABASE_URL, SUPABASE_KEY — чуть ниже этого блока.
+        Новый проект = новый проект в Supabase = новые URL/ключ.
+      - WORKER_URL — чуть ниже этого блока. Новый проект = новый
+        Cloudflare Worker = новый адрес (см. также файл final.js,
+        там у Worker'а свои BOT_TOKEN / CHAT_ID / SUPABASE_* — их тоже
+        менять, это ОТДЕЛЬНЫЙ набор ключей от того, что тут).
+
+   2) НАЗВАНИЕ ОТЕЛЯ / БРЕНДИНГ (ищите по тексту "Your hotel name"):
+      - <title> в самом верху HTML (тег <title>).
+      - eyebrow и h1#heroTitle в блоке .hero-copy ("Your hotel name" /
+        "Your hotel name") — это то, что видит гость на главном экране,
+        пока Supabase не подставил имя гостя.
+      - Внутри объекта I18N (одна огромная строка чуть ниже) ключ
+        "wifi_hint" повторяется 9 раз — по разу на каждый язык,
+        и везде сейчас "Your hotel name". Ctrl+F → "Your hotel name"
+        покажет все вхождения сразу.
+
+   3) WI-FI / ТЕЛЕФОН РЕСЕПШН / ВАЛЮТА:
+      - Сеть и пароль Wi-Fi — ищите "demo-wifi-pass" (пароль встречается
+        2 раза: один в HTML-разметке модалки Wi-Fi, второй — в JS-
+        функции копирования пароля) и текст "Your hotel name" в
+        той же модалке (поле "Сеть").
+      - Внутренний номер ресепшн "1111" — внутри I18N, ключи
+        reception_number / reception_hint, тоже по разу на каждый
+        язык (9 раз). Ctrl+F → "1111".
+      - Валюта "UZS" — внутри I18N (ключ price_uzs на каждом языке)
+        и в JS-коде формирования текста заказа (Ctrl+F → "UZS",
+        в этом файле около 2 мест, плюс ещё в final.js).
+
+   4) ФОТО (папка ./images/ рядом с этим файлом):
+      balcony.jpg, break.jpg, image.png, balcony2.jpg, IMG_5825.jpeg,
+      negroni.jfif — это фото именно этого отеля/номеров, для нового
+      объекта нужны свои фотографии (можно оставить те же имена
+      файлов, чтобы не менять пути в коде, а просто подменить сами
+      картинки).
+
+
+   6) ЧТО РЯДОМ (мок, без бота):
+      - Кнопка #openNearby, экран #nearbyScreen, массив NEARBY_PLACES.
+      - Расстояние считается от HOTEL_ORIGIN (41.286404, 69.263019).
+      - В Supabase: таблица nearby (slug, type, name jsonb, lat, lng, images text[4],
+        sort_order, is_available). Fetch как меню. Расстояние в таблицу не класть.
+      - Фото: ./images/nearby-cover.jpg и ./images/nearby/<slug>-1.jpg … -4.jpg
+
+   7) ИКОНКА «НА ЭКРАН ДОМОЙ» (Safari / iOS):
+      - Положи свой логотип 180×180 PNG → ./images/apple-touch-icon.png
+        (сейчас там башня Your hotel name). Для Android ещё
+        ./images/icon-192.png и ./images/icon-512.png + ./site.webmanifest
+      - Гость: Safari → Поделиться → На экран «Домой».
+
+   5) НЕ ТРЕБУЕТ ОБЯЗАТЕЛЬНОЙ ЗАМЕНЫ, но можно кастомизировать по вкусу:
+      - Список языков LANGS и переводы внутри I18N — можно оставить
+        как есть, если новый отель тоже ориентируется на эти языки.
+      - Категории меню (FOOD/BAR и т.п. чуть ниже) — это структура
+        данных под вашу таблицу menu в Supabase, не хардкод конкретных
+        блюд, менять только если меняется сама структура категорий.
+   ============================================================================ */
+
+const I18N = {"ru": {"err_menu_load": "Меню не загрузилось", "err_send": "Ошибка отправки.", "err_network": "Ошибка сети.", "err_alarm_fields": "Укажите время и дату.", "err_problem_comment": "Заполните описание проблемы.", "room_key": "Номер:", "wifi_title": "Бесплатный Wi-Fi", "wifi_subtitle": "Нажмите, чтобы получить пароль", "btn_back": "Назад", "service_alarm": "Будильник", "service_bar": "Бар", "service_hotel": "Housekeeping", "service_taxi": "Вызвать такси", "service_reception": "Ресепшн", "service_menu": "Меню", "service_review": "Оставить отзыв", "service_problem": "Сообщить о проблеме", "hk_title": "Housekeeping", "hk_call_maids": "Позвать горничных", "hk_clean_room": "Убраться в моем номере", "cat_all": "Все блюда", "cat_soups": "Супы", "cat_mains": "Главные блюда", "cat_drinks": "Напитки", "cat_bar_menu": "Бар меню", "cat_bar_all": "Все", "cat_hot_appetizers": "Горячие закуски", "cat_salad": "Салаты", "cat_soup": "Супы", "cat_main_course": "Основные блюда", "cat_pasta": "Паста", "cat_pizza": "Пицца", "cat_side_dishes": "Гарниры", "cat_dessert": "Десерты", "menu_empty": "Пока нет позиций в этой категории", "bar_group_non_alcohol": "Напитки", "bar_group_alcohol": "Алкоголь", "bar_type_cocktail_alcohol": "Алкогольные коктейли", "bar_type_beer": "Пиво", "bar_type_whiskey": "Виски", "bar_type_cognac": "Коньяк", "bar_type_brandy": "Бренди", "bar_type_rum": "Ром", "bar_type_vodka": "Водка", "bar_type_tequila": "Текила", "bar_type_gin": "Джин", "bar_type_liqueur": "Ликёр", "bar_type_wine": "Вино", "bar_type_coffee": "Кофе", "bar_type_althaus_tea": "Чай Althaus", "bar_type_soft_drinks": "Безалкогольные напитки", "bar_type_milkshake": "Молочный коктейль", "bar_type_mojito": "Мохито", "bar_type_cocktail_non_alcohol": "Безалкогольные коктейли", "cart_items": "позиции", "cart_view": "Заказ", "modal_title": "Ваш заказ", "modal_total": "Итого:", "modal_send": "Отправить заказ", "modal_close": "Закрыть", "clear_cart": "Очистить корзину", "clear_cart_confirm": "Очистить корзину полностью?", "order_success": "Отправлено успешно!", "price_uzs": "UZS", "review_title": "Оставить отзыв", "review_rating_label": "Оцените качество обслуживания:", "review_comment_label": "Ваш комментарий:", "review_send": "Отправить отзыв", "problem_title": "Сообщить о проблеме", "problem_comment_label": "Опишите проблему:", "problem_send": "Отправить жалобу", "select_stars_warn": "Пожалуйста, выберите рейтинг!", "alarm_title": "Заказать будильник", "alarm_time_label": "Время звонка:", "alarm_date_label": "Дата:", "alarm_note_label": "Примечание:", "alarm_send": "Установить будильник", "taxi_title": "Заказать такси", "taxi_dest_label": "Куда едем:", "taxi_time_label": "Время подачи:", "taxi_passengers_label": "Количество пассажиров:", "taxi_send": "Заказать такси", "tagline": "Сервис в номер", "guest": "Гость", "wifi_network": "Сеть", "wifi_password": "Пароль", "wifi_copy": "Скопировать", "wifi_copied": "Пароль скопирован", "order_note_label": "Примечание к заказу", "order_note_placeholder": "Например: без лука, поострее", "sending": "Отправляем…", "reception_number": "Ресепшн · 1111", "reception_call": "Вызвать ресепшн", "reception_hint": "Стойка ответит на внутренний 1111. Нажмите, чтобы отправить вызов.", "set_room": "Номер комнаты", "room_placeholder": "Например, 1208", "room_save": "Сохранить", "empty_cart": "Корзина пуста", "optional": "необязательно", "theme_light": "Светлая", "theme_dark": "Тёмная", "language": "Язык", "dining": "Кухня", "in_room": "В номер", "confirm": "Подтвердить", "request_sent": "Запрос принят", "wifi_hint": "Your hotel name"}, "uz": {"err_menu_load": "Menyu yuklanmadi", "err_send": "Yuborishda xatolik.", "err_network": "Tarmoq xatosi.", "err_alarm_fields": "Vaqt va sanani kiriting.", "err_problem_comment": "Muammo tavsifini kiriting.", "room_key": "Xona:", "wifi_title": "Bepul Wi-Fi", "wifi_subtitle": "Parolni olish uchun bosing", "btn_back": "Orqaga", "service_alarm": "Uyg'otgich", "service_bar": "Bar", "service_hotel": "Housekeeping", "service_taxi": "Taksi chaqirish", "service_reception": "Resepshn", "service_menu": "Taomlar", "service_review": "Sharh qoldirish", "service_problem": "Muammo haqida xabar", "hk_title": "Housekeeping", "hk_call_maids": "Xizmatchilarni chaqirish", "hk_clean_room": "Xonani tozalash", "cat_all": "Barchasi", "cat_soups": "Sho'rvalar", "cat_mains": "Asosiy taomlar", "cat_drinks": "Ichimliklar", "cat_bar_menu": "Bar menyusi", "cat_bar_all": "Barchasi", "cat_hot_appetizers": "Issiq gazaklar", "cat_salad": "Salatlar", "cat_soup": "Sho'rvalar", "cat_main_course": "Asosiy taomlar", "cat_pasta": "Pasta", "cat_pizza": "Pitsa", "cat_side_dishes": "Garnirlar", "cat_dessert": "Desertlar", "menu_empty": "Bu bo'limda hozircha taomlar yo'q", "bar_group_non_alcohol": "Ichimliklar", "bar_group_alcohol": "Alkogol", "bar_type_cocktail_alcohol": "Alkogolli kokteyllar", "bar_type_beer": "Pivo", "bar_type_whiskey": "Viski", "bar_type_cognac": "Konyak", "bar_type_brandy": "Brendi", "bar_type_rum": "Rom", "bar_type_vodka": "Vodka", "bar_type_tequila": "Tekila", "bar_type_gin": "Jin", "bar_type_liqueur": "Liker", "bar_type_wine": "Vino", "bar_type_coffee": "Kofe", "bar_type_althaus_tea": "Althaus choyi", "bar_type_soft_drinks": "Alkogolsiz ichimliklar", "bar_type_milkshake": "Milkshake", "bar_type_mojito": "Mohito", "bar_type_cocktail_non_alcohol": "Alkogolsiz kokteyllar", "cart_items": "ta taom", "cart_view": "Buyurtma", "modal_title": "Buyurtmangiz", "modal_total": "Jami:", "modal_send": "Yuborish", "modal_close": "Yopish", "clear_cart": "Savatchani tozalash", "clear_cart_confirm": "Savatchani butunlay tozalaysizmi?", "order_success": "Muvaffaqiyatli yuborildi!", "price_uzs": "SO'M", "review_title": "Sharh qoldirish", "review_rating_label": "Xizmat sifatini baholang:", "review_comment_label": "Izohingiz:", "review_send": "Yuborish", "problem_title": "Muammo haqida xabar", "problem_comment_label": "Muammoni tasvirlang:", "problem_send": "Shikoyatni yuborish", "select_stars_warn": "Iltimos, bahoni tanlang!", "alarm_title": "Uyg'otgichni sozlash", "alarm_time_label": "Uyg'otish vaqti:", "alarm_date_label": "Sana:", "alarm_note_label": "Izoh:", "alarm_send": "O'rnatish", "taxi_title": "Taksi chaqirish", "taxi_dest_label": "Qayerga:", "taxi_time_label": "Kelish vaqti:", "taxi_passengers_label": "Yo'lovchilar soni:", "taxi_send": "Taksi chaqirish", "tagline": "Xonaga xizmat", "guest": "Mehmon", "wifi_network": "Tarmoq", "wifi_password": "Parol", "wifi_copy": "Nusxa", "wifi_copied": "Parol nusxalandi", "order_note_label": "Buyurtma izohi", "order_note_placeholder": "Masalan: piyozsiz", "sending": "Yuborilmoqda…", "reception_number": "Resepshn · 1111", "reception_call": "Resepshnni chaqirish", "reception_hint": "Stol 1111 raqamida javob beradi.", "set_room": "Xona raqami", "room_placeholder": "Masalan, 1208", "room_save": "Saqlash", "empty_cart": "Savatcha bo‘sh", "optional": "ixtiyoriy", "theme_light": "Yorug‘", "theme_dark": "Qorong‘i", "language": "Til", "dining": "Oshxona", "in_room": "Xonaga", "confirm": "Tasdiqlash", "request_sent": "So‘rov qabul qilindi", "wifi_hint": "Your hotel name"}, "en": {"err_menu_load": "Menu failed to load", "err_send": "Failed to send.", "err_network": "Network error.", "err_alarm_fields": "Please specify a time and date.", "err_problem_comment": "Please describe the problem.", "room_key": "Room:", "wifi_title": "Free Wi-Fi", "wifi_subtitle": "Tap to get the password", "btn_back": "Back", "service_alarm": "Alarm Clock", "service_bar": "Bar", "service_hotel": "Housekeeping", "service_taxi": "Call Taxi", "service_reception": "Reception", "service_menu": "Food Menu", "service_review": "Leave a Review", "service_problem": "Report a Problem", "hk_title": "Housekeeping", "hk_call_maids": "Call Housekeeper", "hk_clean_room": "Clean My Room", "cat_all": "All Dishes", "cat_soups": "Soups", "cat_mains": "Main Dishes", "cat_drinks": "Drinks", "cat_bar_menu": "Bar Menu", "cat_bar_all": "All", "cat_hot_appetizers": "Hot Appetizers", "cat_salad": "Salads", "cat_soup": "Soup", "cat_main_course": "Main Course", "cat_pasta": "Pasta", "cat_pizza": "Pizza", "cat_side_dishes": "Side Dishes", "cat_dessert": "Dessert", "menu_empty": "No items in this category yet", "bar_group_non_alcohol": "Drinks", "bar_group_alcohol": "Alcohol", "bar_type_cocktail_alcohol": "Alcoholic Cocktails", "bar_type_beer": "Beer", "bar_type_whiskey": "Whiskey", "bar_type_cognac": "Cognac", "bar_type_brandy": "Brandy", "bar_type_rum": "Rum", "bar_type_vodka": "Vodka", "bar_type_tequila": "Tequila", "bar_type_gin": "Gin", "bar_type_liqueur": "Liqueur", "bar_type_wine": "Wine", "bar_type_coffee": "Coffee", "bar_type_althaus_tea": "Althaus Tea", "bar_type_soft_drinks": "Soft Drinks", "bar_type_milkshake": "Milkshake", "bar_type_mojito": "Mojito", "bar_type_cocktail_non_alcohol": "Non-Alcoholic Cocktails", "cart_items": "items", "cart_view": "View Cart", "modal_title": "Your Order", "modal_total": "Total:", "modal_send": "Place Order", "modal_close": "Close", "clear_cart": "Clear cart", "clear_cart_confirm": "Clear the entire cart?", "order_success": "Sent successfully!", "price_uzs": "UZS", "review_title": "Leave a Review", "review_rating_label": "Rate our service:", "review_comment_label": "Your comment:", "review_send": "Submit Review", "problem_title": "Report a Problem", "problem_comment_label": "Describe the issue:", "problem_send": "Submit Report", "select_stars_warn": "Please select a star rating!", "alarm_title": "Set Wake-Up Call", "alarm_time_label": "Time:", "alarm_date_label": "Date:", "alarm_note_label": "Note:", "alarm_send": "Set Alarm", "taxi_title": "Call a Taxi", "taxi_dest_label": "Destination:", "taxi_time_label": "Pickup Time:", "taxi_passengers_label": "Passengers:", "taxi_send": "Order Taxi", "tagline": "In-room dining", "guest": "Guest", "wifi_network": "Network", "wifi_password": "Password", "wifi_copy": "Copy", "wifi_copied": "Password copied", "order_note_label": "Order note", "order_note_placeholder": "e.g. no onion, extra spice", "sending": "Sending…", "reception_number": "Reception · 1111", "reception_call": "Call reception", "reception_hint": "The desk answers on 1111. Tap to send a call request.", "set_room": "Room number", "room_placeholder": "e.g. 1208", "room_save": "Save", "empty_cart": "Your cart is empty", "optional": "optional", "theme_light": "Light", "theme_dark": "Dark", "language": "Language", "dining": "Kitchen", "in_room": "To the room", "confirm": "Confirm", "request_sent": "Request received", "wifi_hint": "Your hotel name"}, "zh": {"err_menu_load": "菜单加载失败", "err_send": "发送失败。", "err_network": "网络错误。", "err_alarm_fields": "请填写时间和日期。", "err_problem_comment": "请描述问题。", "room_key": "房间:", "wifi_title": "免费 Wi-Fi", "wifi_subtitle": "点击获取密码", "btn_back": "返回", "service_alarm": "闹钟", "service_bar": "酒吧", "service_hotel": "客房服务", "service_taxi": "叫出租车", "service_reception": "前台", "service_menu": "菜谱", "service_review": "留下评价", "service_problem": "报告问题", "hk_title": "客房服务", "hk_call_maids": "呼叫服务员", "hk_clean_room": "打扫房间", "cat_all": "全部", "cat_soups": "汤类", "cat_mains": "主菜", "cat_drinks": "饮料", "cat_bar_menu": "酒吧菜单", "cat_bar_all": "全部", "cat_hot_appetizers": "热开胃菜", "cat_salad": "沙拉", "cat_soup": "汤类", "cat_main_course": "主菜", "cat_pasta": "意面", "cat_pizza": "披萨", "cat_side_dishes": "配菜", "cat_dessert": "甜点", "menu_empty": "该分类暂无菜品", "bar_group_non_alcohol": "饮品", "bar_group_alcohol": "酒精饮品", "bar_type_cocktail_alcohol": "酒精鸡尾酒", "bar_type_beer": "啤酒", "bar_type_whiskey": "威士忌", "bar_type_cognac": "干邑", "bar_type_brandy": "白兰地", "bar_type_rum": "朗姆酒", "bar_type_vodka": "伏特加", "bar_type_tequila": "龙舌兰", "bar_type_gin": "金酒", "bar_type_liqueur": "利口酒", "bar_type_wine": "葡萄酒", "bar_type_coffee": "咖啡", "bar_type_althaus_tea": "Althaus 茶", "bar_type_soft_drinks": "软饮料", "bar_type_milkshake": "奶昔", "bar_type_mojito": "莫吉托", "bar_type_cocktail_non_alcohol": "无酒精鸡尾酒", "cart_items": "件", "cart_view": "查看订单", "modal_title": "您的订单", "modal_total": "总计:", "modal_send": "提交订单", "modal_close": "关闭", "clear_cart": "清空购物车", "clear_cart_confirm": "确定要清空整个购物车吗？", "order_success": "发送成功！", "price_uzs": "UZS", "review_title": "留下评价", "review_rating_label": "评估我们的服务:", "review_comment_label": "您的评论:", "review_send": "提交评价", "problem_title": "报告问题", "problem_comment_label": "描述问题:", "problem_send": "提交报告", "select_stars_warn": "请选择星级评分！", "alarm_title": "设置叫醒服务", "alarm_time_label": "叫醒时间:", "alarm_date_label": "日期:", "alarm_note_label": "备注:", "alarm_send": "设置闹钟", "taxi_title": "预约出租车", "taxi_dest_label": "目的地:", "taxi_time_label": "用车时间:", "taxi_passengers_label": "乘客人数:", "taxi_send": "叫车", "tagline": "客房送餐", "guest": "客人", "wifi_network": "网络", "wifi_password": "密码", "wifi_copy": "复制", "wifi_copied": "已复制密码", "order_note_label": "订单备注", "order_note_placeholder": "例如：不要洋葱", "sending": "发送中…", "reception_number": "前台 · 1111", "reception_call": "呼叫前台", "reception_hint": "前台分机 1111。", "set_room": "房间号", "room_placeholder": "例如 1208", "room_save": "保存", "empty_cart": "购物车为空", "optional": "选填", "theme_light": "浅色", "theme_dark": "深色", "language": "语言", "dining": "厨房", "in_room": "送至客房", "confirm": "确认", "request_sent": "已收到请求", "wifi_hint": "Your hotel name"}, "ar": {"err_menu_load": "فشل تحميل القائمة", "err_send": "فشل الإرسال.", "err_network": "خطأ في الشبكة.", "err_alarm_fields": "يرجى تحديد الوقت والتاريخ.", "err_problem_comment": "يرجى وصف المشكلة.", "room_key": "غرفة:", "wifi_title": "واي فاي مجاني", "wifi_subtitle": "اضغط للحصول على كلمة المرور", "btn_back": "رجوع", "service_alarm": "منبه", "service_bar": "بار", "service_hotel": "تنظيف الغرف", "service_taxi": "طلب سيارة أجرة", "service_reception": "الاستقبال", "service_menu": "قائمة الطعام", "service_review": "ترك تقييم", "service_problem": "الإبلاغ عن مشكلة", "hk_title": "تنظيف الغرف", "hk_call_maids": "استدعاء العاملة", "hk_clean_room": "تنظيف غرفتي", "cat_all": "الكل", "cat_soups": "حساء", "cat_mains": "الأطباق الرئيسية", "cat_drinks": "مشروبات", "cat_bar_menu": "قائمة البار", "cat_bar_all": "الكل", "cat_hot_appetizers": "المقبلات الساخنة", "cat_salad": "السلطات", "cat_soup": "حساء", "cat_main_course": "الأطباق الرئيسية", "cat_pasta": "المعكرونة", "cat_pizza": "بيتزا", "cat_side_dishes": "أطباق جانبية", "cat_dessert": "الحلويات", "menu_empty": "لا توجد عناصر في هذا القسم بعد", "bar_group_non_alcohol": "المشروبات", "bar_group_alcohol": "المشروبات الكحولية", "bar_type_cocktail_alcohol": "كوكتيلات كحولية", "bar_type_beer": "بيرة", "bar_type_whiskey": "ويسكي", "bar_type_cognac": "كونياك", "bar_type_brandy": "براندي", "bar_type_rum": "روم", "bar_type_vodka": "فودكا", "bar_type_tequila": "تكيلا", "bar_type_gin": "جن", "bar_type_liqueur": "ليكيور", "bar_type_wine": "نبيذ", "bar_type_coffee": "قهوة", "bar_type_althaus_tea": "شاي ألتهاوس", "bar_type_soft_drinks": "مشروبات غازية", "bar_type_milkshake": "ميلك شيك", "bar_type_mojito": "موخيتو", "bar_type_cocktail_non_alcohol": "كوكتيلات خالية من الكحول", "cart_items": "عناصر", "cart_view": "عرض الطلب", "modal_title": "طلبك", "modal_total": "المجموع:", "modal_send": "إرسال الطلب", "modal_close": "إغلاق", "clear_cart": "إفراغ السلة", "clear_cart_confirm": "هل تريد إفراغ السلة بالكامل؟", "order_success": "تم الإرسال بنجاح!", "price_uzs": "UZS", "review_title": "ترك تقييم", "review_rating_label": "قيم خدمتنا:", "review_comment_label": "تعليقك:", "review_send": "إرسال التقييم", "problem_title": "الإبلاغ عن مشكلة", "problem_comment_label": "صف المشكلة:", "problem_send": "إرسال البلاغ", "select_stars_warn": "يرجى تحديد التقييم!", "alarm_title": "ضبط المنبه", "alarm_time_label": "الوقت:", "alarm_date_label": "التاريخ:", "alarm_note_label": "ملاحظة:", "alarm_send": "ضبط المنبه", "taxi_title": "طلب سيارة أجرة", "taxi_dest_label": "الوجهة:", "taxi_time_label": "وقت الوصول:", "taxi_passengers_label": "عدد الركاب:", "taxi_send": "طلب تاكسي", "tagline": "خدمة الغرف", "guest": "ضيف", "wifi_network": "الشبكة", "wifi_password": "كلمة المرور", "wifi_copy": "نسخ", "wifi_copied": "تم نسخ كلمة المرور", "order_note_label": "ملاحظة الطلب", "order_note_placeholder": "مثلاً: بدون بصل", "sending": "جارٍ الإرسال…", "reception_number": "الاستقبال · 1111", "reception_call": "طلب الاستقبال", "reception_hint": "المكتب يرد على 1111.", "set_room": "رقم الغرفة", "room_placeholder": "مثلاً 1208", "room_save": "حفظ", "empty_cart": "السلة فارغة", "optional": "اختياري", "theme_light": "فاتح", "theme_dark": "داكن", "language": "اللغة", "dining": "المطبخ", "in_room": "إلى الغرفة", "confirm": "تأكيد", "request_sent": "تم استلام الطلب", "wifi_hint": "Your hotel name"}, "fr": {"err_menu_load": "Échec du chargement du menu", "err_send": "Échec de l'envoi.", "err_network": "Erreur réseau.", "err_alarm_fields": "Veuillez indiquer l'heure et la date.", "err_problem_comment": "Veuillez décrire le problème.", "room_key": "Chambre:", "wifi_title": "Wi-Fi gratuit", "wifi_subtitle": "Appuyez pour obtenir le mot de passe", "btn_back": "Retour", "service_alarm": "Réveil", "service_bar": "Bar", "service_hotel": "Housekeeping", "service_taxi": "Appeler un taxi", "service_reception": "Réception", "service_menu": "Menu", "service_review": "Laisser un avis", "service_problem": "Signaler un problème", "hk_title": "Housekeeping", "hk_call_maids": "Appeler la femme de chambre", "hk_clean_room": "Nettoyer ma chambre", "cat_all": "Tous", "cat_soups": "Soupes", "cat_mains": "Plats principaux", "cat_drinks": "Boissons", "cat_bar_menu": "Menu du bar", "cat_bar_all": "Tout", "cat_hot_appetizers": "Entrées chaudes", "cat_salad": "Salades", "cat_soup": "Soupes", "cat_main_course": "Plats principaux", "cat_pasta": "Pâtes", "cat_pizza": "Pizza", "cat_side_dishes": "Accompagnements", "cat_dessert": "Desserts", "menu_empty": "Aucun article dans cette catégorie pour le moment", "bar_group_non_alcohol": "Boissons", "bar_group_alcohol": "Alcool", "bar_type_cocktail_alcohol": "Cocktails alcoolisés", "bar_type_beer": "Bière", "bar_type_whiskey": "Whisky", "bar_type_cognac": "Cognac", "bar_type_brandy": "Brandy", "bar_type_rum": "Rhum", "bar_type_vodka": "Vodka", "bar_type_tequila": "Tequila", "bar_type_gin": "Gin", "bar_type_liqueur": "Liqueur", "bar_type_wine": "Vin", "bar_type_coffee": "Café", "bar_type_althaus_tea": "Thé Althaus", "bar_type_soft_drinks": "Boissons non alcoolisées", "bar_type_milkshake": "Milkshake", "bar_type_mojito": "Mojito", "bar_type_cocktail_non_alcohol": "Cocktails sans alcool", "cart_items": "articles", "cart_view": "Voir la commande", "modal_title": "Votre commande", "modal_total": "Total:", "modal_send": "Passer la commande", "modal_close": "Fermer", "clear_cart": "Vider le panier", "clear_cart_confirm": "Vider entièrement le panier ?", "order_success": "Envoyé avec succès!", "price_uzs": "UZS", "review_title": "Laisser un avis", "review_rating_label": "Évaluez notre service:", "review_comment_label": "Votre commentaire:", "review_send": "Soumettre", "problem_title": "Signaler un problème", "problem_comment_label": "Décrivez le problème:", "problem_send": "Envoyer le rapport", "select_stars_warn": "Veuillez sélectionner une note!", "alarm_title": "Régler le réveil", "alarm_time_label": "Heure:", "alarm_date_label": "Date:", "alarm_note_label": "Note:", "alarm_send": "Régler", "taxi_title": "Commander un taxi", "taxi_dest_label": "Destination:", "taxi_time_label": "Heure de prise en charge:", "taxi_passengers_label": "Passagers:", "taxi_send": "Commander", "tagline": "Service en chambre", "guest": "Invité", "wifi_network": "Réseau", "wifi_password": "Mot de passe", "wifi_copy": "Copier", "wifi_copied": "Mot de passe copié", "order_note_label": "Note de commande", "order_note_placeholder": "ex. sans oignon", "sending": "Envoi…", "reception_number": "Réception · 1111", "reception_call": "Appeler la réception", "reception_hint": "Le desk répond au 1111.", "set_room": "Numéro de chambre", "room_placeholder": "ex. 1208", "room_save": "Enregistrer", "empty_cart": "Panier vide", "optional": "facultatif", "theme_light": "Clair", "theme_dark": "Sombre", "language": "Langue", "dining": "Cuisine", "in_room": "En chambre", "confirm": "Confirmer", "request_sent": "Demande reçue", "wifi_hint": "Your hotel name"}, "es": {"err_menu_load": "No se pudo cargar el menú", "err_send": "Error al enviar.", "err_network": "Error de red.", "err_alarm_fields": "Indique la hora y la fecha.", "err_problem_comment": "Describa el problema.", "room_key": "Habitación:", "wifi_title": "Wi-Fi gratis", "wifi_subtitle": "Toque para obtener la contraseña", "btn_back": "Volver", "service_alarm": "Despertador", "service_bar": "Bar", "service_hotel": "Housekeeping", "service_taxi": "Pedir taxi", "service_reception": "Recepción", "service_menu": "Menú", "service_review": "Dejar una opinión", "service_problem": "Reportar un problema", "hk_title": "Housekeeping", "hk_call_maids": "Llamar a las camareras", "hk_clean_room": "Limpiar mi habitación", "cat_all": "Todos", "cat_soups": "Sopas", "cat_mains": "Platos principales", "cat_drinks": "Bebidas", "cat_bar_menu": "Menú del bar", "cat_bar_all": "Todo", "cat_hot_appetizers": "Entrantes calientes", "cat_salad": "Ensaladas", "cat_soup": "Sopas", "cat_main_course": "Platos principales", "cat_pasta": "Pasta", "cat_pizza": "Pizza", "cat_side_dishes": "Guarniciones", "cat_dessert": "Postres", "menu_empty": "Todavía no hay artículos en esta categoría", "bar_group_non_alcohol": "Bebidas", "bar_group_alcohol": "Alcohol", "bar_type_cocktail_alcohol": "Cócteles alcohólicos", "bar_type_beer": "Cerveza", "bar_type_whiskey": "Whisky", "bar_type_cognac": "Coñac", "bar_type_brandy": "Brandy", "bar_type_rum": "Ron", "bar_type_vodka": "Vodka", "bar_type_tequila": "Tequila", "bar_type_gin": "Ginebra", "bar_type_liqueur": "Licor", "bar_type_wine": "Vino", "bar_type_coffee": "Café", "bar_type_althaus_tea": "Té Althaus", "bar_type_soft_drinks": "Refrescos", "bar_type_milkshake": "Batido", "bar_type_mojito": "Mojito", "bar_type_cocktail_non_alcohol": "Cócteles sin alcohol", "cart_items": "artículos", "cart_view": "Ver pedido", "modal_title": "Su pedido", "modal_total": "Total:", "modal_send": "Realizar pedido", "modal_close": "Cerrar", "clear_cart": "Vaciar carrito", "clear_cart_confirm": "¿Vaciar todo el carrito?", "order_success": "¡Enviado con éxito!", "price_uzs": "UZS", "review_title": "Dejar una opinión", "review_rating_label": "Califique nuestro servicio:", "review_comment_label": "Su comentario:", "review_send": "Enviar opinión", "problem_title": "Reportar un problema", "problem_comment_label": "Describa el problema:", "problem_send": "Enviar reporte", "select_stars_warn": "¡Por favor seleccione una calificación!", "alarm_title": "Configurar despertador", "alarm_time_label": "Hora:", "alarm_date_label": "Fecha:", "alarm_note_label": "Nota:", "alarm_send": "Configurar", "taxi_title": "Pedir un taxi", "taxi_dest_label": "Destino:", "taxi_time_label": "Hora de recogida:", "taxi_passengers_label": "Pasajeros:", "taxi_send": "Pedir taxi", "tagline": "Servicio a la habitación", "guest": "Huésped", "wifi_network": "Red", "wifi_password": "Contraseña", "wifi_copy": "Copiar", "wifi_copied": "Contraseña copiada", "order_note_label": "Nota del pedido", "order_note_placeholder": "p. ej. sin cebolla", "sending": "Enviando…", "reception_number": "Recepción · 1111", "reception_call": "Llamar a recepción", "reception_hint": "El escritorio responde al 1111.", "set_room": "Número de habitación", "room_placeholder": "p. ej. 1208", "room_save": "Guardar", "empty_cart": "Carrito vacío", "optional": "opcional", "theme_light": "Claro", "theme_dark": "Oscuro", "language": "Idioma", "dining": "Cocina", "in_room": "A la habitación", "confirm": "Confirmar", "request_sent": "Solicitud recibida", "wifi_hint": "Your hotel name"}, "de": {"err_menu_load": "Menü konnte nicht geladen werden", "err_send": "Senden fehlgeschlagen.", "err_network": "Netzwerkfehler.", "err_alarm_fields": "Bitte Uhrzeit und Datum angeben.", "err_problem_comment": "Bitte beschreiben Sie das Problem.", "room_key": "Zimmer:", "wifi_title": "Kostenloses Wi-Fi", "wifi_subtitle": "Tippen, um das Passwort zu erhalten", "btn_back": "Zurück", "service_alarm": "Wecker", "service_bar": "Bar", "service_hotel": "Housekeeping", "service_taxi": "Taxi rufen", "service_reception": "Rezeption", "service_menu": "Speisekarte", "service_review": "Bewertung abgeben", "service_problem": "Problem melden", "hk_title": "Housekeeping", "hk_call_maids": "Zimmermädchen rufen", "hk_clean_room": "Zimmer reinigen", "cat_all": "Alle", "cat_soups": "Suppen", "cat_mains": "Hauptgerichte", "cat_drinks": "Getränke", "cat_bar_menu": "Barmenü", "cat_bar_all": "Alle", "cat_hot_appetizers": "Warme Vorspeisen", "cat_salad": "Salate", "cat_soup": "Suppen", "cat_main_course": "Hauptgerichte", "cat_pasta": "Pasta", "cat_pizza": "Pizza", "cat_side_dishes": "Beilagen", "cat_dessert": "Desserts", "menu_empty": "Noch keine Artikel in dieser Kategorie", "bar_group_non_alcohol": "Getränke", "bar_group_alcohol": "Alkohol", "bar_type_cocktail_alcohol": "Alkoholische Cocktails", "bar_type_beer": "Bier", "bar_type_whiskey": "Whisky", "bar_type_cognac": "Cognac", "bar_type_brandy": "Brandy", "bar_type_rum": "Rum", "bar_type_vodka": "Wodka", "bar_type_tequila": "Tequila", "bar_type_gin": "Gin", "bar_type_liqueur": "Likör", "bar_type_wine": "Wein", "bar_type_coffee": "Kaffee", "bar_type_althaus_tea": "Althaus Tee", "bar_type_soft_drinks": "Softdrinks", "bar_type_milkshake": "Milchshake", "bar_type_mojito": "Mojito", "bar_type_cocktail_non_alcohol": "Alkoholfreie Cocktails", "cart_items": "Artikel", "cart_view": "Bestellung anzeigen", "modal_title": "Ihre Bestellung", "modal_total": "Gesamt:", "modal_send": "Bestellung abschicken", "modal_close": "Schließen", "clear_cart": "Warenkorb leeren", "clear_cart_confirm": "Warenkorb vollständig leeren?", "order_success": "Erfolgreich gesendet!", "price_uzs": "UZS", "review_title": "Bewertung abgeben", "review_rating_label": "Bewerten Sie unseren Service:", "review_comment_label": "Ihr Kommentar:", "review_send": "Absenden", "problem_title": "Problem melden", "problem_comment_label": "Beschreiben Sie das Problem:", "problem_send": "Bericht senden", "select_stars_warn": "Bitte wählen Sie eine Bewertung!", "alarm_title": "Weckruf einstellen", "alarm_time_label": "Uhrzeit:", "alarm_date_label": "Datum:", "alarm_note_label": "Notiz:", "alarm_send": "Einstellen", "taxi_title": "Taxi bestellen", "taxi_dest_label": "Ziel:", "taxi_time_label": "Abholzeit:", "taxi_passengers_label": "Fahrgäste:", "taxi_send": "Taxi bestellen", "tagline": "Zimmerservice", "guest": "Gast", "wifi_network": "Netzwerk", "wifi_password": "Passwort", "wifi_copy": "Kopieren", "wifi_copied": "Passwort kopiert", "order_note_label": "Bestellnotiz", "order_note_placeholder": "z. B. ohne Zwiebeln", "sending": "Senden…", "reception_number": "Rezeption · 1111", "reception_call": "Rezeption rufen", "reception_hint": "Die Rezeption antwortet unter 1111.", "set_room": "Zimmernummer", "room_placeholder": "z. B. 1208", "room_save": "Speichern", "empty_cart": "Warenkorb leer", "optional": "optional", "theme_light": "Hell", "theme_dark": "Dunkel", "language": "Sprache", "dining": "Küche", "in_room": "Aufs Zimmer", "confirm": "Bestätigen", "request_sent": "Anfrage erhalten", "wifi_hint": "Your hotel name"}, "kk": {"err_menu_load": "Мәзір жүктелмеді", "err_send": "Жіберу қатесі.", "err_network": "Желі қатесі.", "err_alarm_fields": "Уақыты мен күнін көрсетіңіз.", "err_problem_comment": "Мәселе сипаттамасын толтырыңыз.", "room_key": "Бөлме:", "wifi_title": "Тегін Wi-Fi", "wifi_subtitle": "Құпия сөзді алу үшін басыңыз", "btn_back": "Артқа", "service_alarm": "Оятқыш", "service_bar": "Бар", "service_hotel": "Housekeeping", "service_taxi": "Такси шақыру", "service_reception": "Ресепшн", "service_menu": "Тағам мәзірі", "service_review": "Пікір қалдыру", "service_problem": "Мәселе туралы хабарлау", "hk_title": "Housekeeping", "hk_call_maids": "Тазалықшыны шақыру", "hk_clean_room": "Бөлмені тазалау", "cat_all": "Барлығы", "cat_soups": "Сорпалар", "cat_mains": "Негізгі тағамдар", "cat_drinks": "Сусындар", "cat_bar_menu": "Бар мәзірі", "cat_bar_all": "Барлығы", "cat_hot_appetizers": "Ыстық закускалар", "cat_salad": "Салаттар", "cat_soup": "Сорпалар", "cat_main_course": "Негізгі тағамдар", "cat_pasta": "Паста", "cat_pizza": "Пицца", "cat_side_dishes": "Гарнирлер", "cat_dessert": "Десерттер", "menu_empty": "Бұл санатта әзірге позициялар жоқ", "bar_group_non_alcohol": "Сусындар", "bar_group_alcohol": "Алкоголь", "bar_type_cocktail_alcohol": "Алкогольді коктейльдер", "bar_type_beer": "Сыра", "bar_type_whiskey": "Виски", "bar_type_cognac": "Коньяк", "bar_type_brandy": "Бренди", "bar_type_rum": "Ром", "bar_type_vodka": "Водка", "bar_type_tequila": "Текила", "bar_type_gin": "Джин", "bar_type_liqueur": "Ликер", "bar_type_wine": "Шарап", "bar_type_coffee": "Кофе", "bar_type_althaus_tea": "Althaus шайы", "bar_type_soft_drinks": "Алкогольсіз сусындар", "bar_type_milkshake": "Милкшейк", "bar_type_mojito": "Мохито", "bar_type_cocktail_non_alcohol": "Алкогольсіз коктейльдер", "cart_items": "тағам", "cart_view": "Тапсырыс", "modal_title": "Сіздің тапсырысыңыз", "modal_total": "Жиыны:", "modal_send": "Тапсырыс беру", "modal_close": "Жабу", "clear_cart": "Себетті тазалау", "clear_cart_confirm": "Себетті толығымен тазалайсыз ба?", "order_success": "Сәтті жіберілді!", "price_uzs": "UZS", "review_title": "Пікір қалдыру", "review_rating_label": "Қызмет сапасын бағалаңыз:", "review_comment_label": "Сіздің пікіріңіз:", "review_send": "Жіберу", "problem_title": "Шағым жіберу", "problem_comment_label": "Мәселені сипаттаңыз:", "problem_send": "Шағымды жіберу", "select_stars_warn": "Бағалауды таңдаңыз!", "alarm_title": "Оятқышты орнату", "alarm_time_label": "Уақыты:", "alarm_date_label": "Күні:", "alarm_note_label": "Ескертпе:", "alarm_send": "Орнату", "taxi_title": "Такси шақыру", "taxi_dest_label": "Қайда:", "taxi_time_label": "Келу уақыты:", "taxi_passengers_label": "Жолаушылар саны:", "taxi_send": "Шақыру", "tagline": "Бөлмеге қызмет", "guest": "Қонақ", "wifi_network": "Желі", "wifi_password": "Құпия сөз", "wifi_copy": "Көшіру", "wifi_copied": "Құпия сөз көшірілді", "order_note_label": "Тапсырыс ескертпесі", "order_note_placeholder": "Мысалы: пиязсыз", "sending": "Жіберілуде…", "reception_number": "Ресепшн · 1111", "reception_call": "Ресепшнді шақыру", "reception_hint": "Үстел 1111 нөміріне жауап береді.", "set_room": "Бөлме нөмірі", "room_placeholder": "Мысалы, 1208", "room_save": "Сақтау", "empty_cart": "Себет бос", "optional": "міндетті емес", "theme_light": "Жарық", "theme_dark": "Қараңғы", "language": "Тіл", "dining": "Асхана", "in_room": "Бөлмеге", "confirm": "Растау", "request_sent": "Сұрау қабылданды", "wifi_hint": "Your hotel name"}, "tr": {"err_menu_load": "Menü yüklenemedi", "err_send": "Gönderme hatası.", "err_network": "Ağ hatası.", "err_alarm_fields": "Lütfen saat ve tarih belirtin.", "err_problem_comment": "Lütfen sorunu açıklayın.", "room_key": "Oda:", "wifi_title": "Ücretsiz Wi-Fi", "wifi_subtitle": "Şifreyi almak için dokunun", "btn_back": "Geri", "service_alarm": "Uyandırma Servisi", "service_bar": "Bar", "service_hotel": "Housekeeping", "service_taxi": "Taksi Çağır", "service_reception": "Resepsiyon", "service_menu": "Yemek Menüsü", "service_review": "Değerlendirme Yap", "service_problem": "Sorun Bildir", "hk_title": "Housekeeping", "hk_call_maids": "Kat Hizmetlisini Çağır", "hk_clean_room": "Odamı Temizleyin", "cat_all": "Tümü", "cat_soups": "Çorbalar", "cat_mains": "Ana Yemekler", "cat_drinks": "İçecekler", "cat_bar_menu": "Bar Menüsü", "cat_bar_all": "Tümü", "cat_hot_appetizers": "Sıcak mezeler", "cat_salad": "Salatalar", "cat_soup": "Çorbalar", "cat_main_course": "Ana yemekler", "cat_pasta": "Makarna", "cat_pizza": "Pizza", "cat_side_dishes": "Garnitürler", "cat_dessert": "Tatlılar", "menu_empty": "Bu kategoride henüz ürün yok", "bar_group_non_alcohol": "İçecekler", "bar_group_alcohol": "Alkol", "bar_type_cocktail_alcohol": "Alkollü Kokteyller", "bar_type_beer": "Bira", "bar_type_whiskey": "Viski", "bar_type_cognac": "Konyak", "bar_type_brandy": "Brendi", "bar_type_rum": "Rom", "bar_type_vodka": "Votka", "bar_type_tequila": "Tekila", "bar_type_gin": "Cin", "bar_type_liqueur": "Likör", "bar_type_wine": "Şarap", "bar_type_coffee": "Kahve", "bar_type_althaus_tea": "Althaus Çayı", "bar_type_soft_drinks": "Alkolsüz İçecekler", "bar_type_milkshake": "Milkshake", "bar_type_mojito": "Mojito", "bar_type_cocktail_non_alcohol": "Alkolsüz Kokteyller", "cart_items": "ürün", "cart_view": "Siparişi Gör", "modal_title": "Siparişiniz", "modal_total": "Toplam:", "modal_send": "Siparişi Gönder", "modal_close": "Kapat", "clear_cart": "Sepeti temizle", "clear_cart_confirm": "Sepet tamamen boşaltılsın mı?", "order_success": "Başarıyla gönderildi!", "price_uzs": "UZS", "review_title": "Değerlendirme Yap", "review_rating_label": "Hizmetimizi değerlendirin:", "review_comment_label": "Yorumunuz:", "review_send": "Gönder", "problem_title": "Sorun Bildir", "problem_comment_label": "Sorunu açıklayın:", "problem_send": "Raporu Gönder", "select_stars_warn": "Lütfen bir puan seçin!", "alarm_title": "Alarm Kur", "alarm_time_label": "Saat:", "alarm_date_label": "Tarih:", "alarm_note_label": "Not:", "alarm_send": "Alarmı Kur", "taxi_title": "Taksi Çağır", "taxi_dest_label": "Nereye:", "taxi_time_label": "Alınış Saati:", "taxi_passengers_label": "Yolcu Sayısı:", "taxi_send": "Taksi İste", "tagline": "Oda servisi", "guest": "Misafir", "wifi_network": "Ağ", "wifi_password": "Şifre", "wifi_copy": "Kopyala", "wifi_copied": "Şifre kopyalandı", "order_note_label": "Sipariş notu", "order_note_placeholder": "örn. soğansız", "sending": "Gönderiliyor…", "reception_number": "Resepsiyon · 1111", "reception_call": "Resepsiyonu çağır", "reception_hint": "Banko 1111 numarasına cevap verir.", "set_room": "Oda numarası", "room_placeholder": "örn. 1208", "room_save": "Kaydet", "empty_cart": "Sepet boş", "optional": "isteğe bağlı", "theme_light": "Açık", "theme_dark": "Koyu", "language": "Dil", "dining": "Mutfak", "in_room": "Odaya", "confirm": "Onayla", "request_sent": "Talep alındı", "wifi_hint": "Your hotel name"}};
+
+/* 📌 ЧТО РЯДОМ — переводы кнопки, типов, единиц расстояния (10 языков). */
+const NEARBY_I18N = {
+  ru: {service_nearby:"Что рядом",nearby_title:"Рядом",nearby_tagline:"Вокруг отеля",nearby_directions:"Составить маршрут",nearby_type_restaurant:"Ресторан",nearby_type_cafe:"Кафе",nearby_type_museum:"Музей",nearby_type_park:"Парк",place_afsona:"Afsona",place_bon:"Bon",place_museum:"Музей прикладного искусства",place_park:"Парк мира",nearby_m:"м",nearby_km:"км",nearby_min:"мин"},
+  uz: {service_nearby:"Yaqin-atrofda",nearby_title:"Yaqin-atrof",nearby_tagline:"Mehmonxona atrofida",nearby_directions:"Marshrut tuzish",nearby_type_restaurant:"Restoran",nearby_type_cafe:"Kafe",nearby_type_museum:"Muzey",nearby_type_park:"Bog‘",place_afsona:"Afsona",place_bon:"Bon",place_museum:"Amaliy san’at muzeyi",place_park:"Tinchlik bog‘i",nearby_m:"m",nearby_km:"km",nearby_min:"daq"},
+  en: {service_nearby:"What's Nearby",nearby_title:"Nearby",nearby_tagline:"Around the hotel",nearby_directions:"Get directions",nearby_type_restaurant:"Restaurant",nearby_type_cafe:"Café",nearby_type_museum:"Museum",nearby_type_park:"Park",place_afsona:"Afsona",place_bon:"Bon",place_museum:"Museum of Applied Arts",place_park:"Seattle Peace Park",nearby_m:"m",nearby_km:"km",nearby_min:"min"},
+  zh: {service_nearby:"附近",nearby_title:"附近",nearby_tagline:"酒店周边",nearby_directions:"规划路线",nearby_type_restaurant:"餐厅",nearby_type_cafe:"咖啡馆",nearby_type_museum:"博物馆",nearby_type_park:"公园",place_afsona:"Afsona",place_bon:"Bon",place_museum:"应用艺术博物馆",place_park:"西雅图和平公园",nearby_m:"米",nearby_km:"公里",nearby_min:"分钟"},
+  ar: {service_nearby:"ماذا في الجوار",nearby_title:"بالجوار",nearby_tagline:"حول الفندق",nearby_directions:"إنشاء مسار",nearby_type_restaurant:"مطعم",nearby_type_cafe:"مقهى",nearby_type_museum:"متحف",nearby_type_park:"حديقة",place_afsona:"Afsona",place_bon:"Bon",place_museum:"متحف الفنون التطبيقية",place_park:"حديقة السلام",nearby_m:"م",nearby_km:"كم",nearby_min:"د"},
+  fr: {service_nearby:"À proximité",nearby_title:"À proximité",nearby_tagline:"Autour de l'hôtel",nearby_directions:"Itinéraire",nearby_type_restaurant:"Restaurant",nearby_type_cafe:"Café",nearby_type_museum:"Musée",nearby_type_park:"Parc",place_afsona:"Afsona",place_bon:"Bon",place_museum:"Musée des arts appliqués",place_park:"Parc de la Paix",nearby_m:"m",nearby_km:"km",nearby_min:"min"},
+  es: {service_nearby:"Qué hay cerca",nearby_title:"Cerca",nearby_tagline:"Alrededor del hotel",nearby_directions:"Cómo llegar",nearby_type_restaurant:"Restaurante",nearby_type_cafe:"Café",nearby_type_museum:"Museo",nearby_type_park:"Parque",place_afsona:"Afsona",place_bon:"Bon",place_museum:"Museo de artes aplicadas",place_park:"Parque de la Paz",nearby_m:"m",nearby_km:"km",nearby_min:"min"},
+  de: {service_nearby:"In der Nähe",nearby_title:"In der Nähe",nearby_tagline:"Rund ums Hotel",nearby_directions:"Route planen",nearby_type_restaurant:"Restaurant",nearby_type_cafe:"Café",nearby_type_museum:"Museum",nearby_type_park:"Park",place_afsona:"Afsona",place_bon:"Bon",place_museum:"Museum für angewandte Kunst",place_park:"Friedenspark",nearby_m:"m",nearby_km:"km",nearby_min:"Min."},
+  kk: {service_nearby:"Жақын жерде",nearby_title:"Жақын жерде",nearby_tagline:"Қонақүй маңында",nearby_directions:"Бағыт құру",nearby_type_restaurant:"Мейрамхана",nearby_type_cafe:"Кафе",nearby_type_museum:"Мұражай",nearby_type_park:"Саябақ",place_afsona:"Afsona",place_bon:"Bon",place_museum:"Қолданбалы өнер мұражайы",place_park:"Бейбітшілік саябағы",nearby_m:"м",nearby_km:"км",nearby_min:"мин"},
+  tr: {service_nearby:"Yakınlarda ne var",nearby_title:"Yakınlar",nearby_tagline:"Otelin çevresi",nearby_directions:"Yol tarifi",nearby_type_restaurant:"Restoran",nearby_type_cafe:"Kafe",nearby_type_museum:"Müze",nearby_type_park:"Park",place_afsona:"Afsona",place_bon:"Bon",place_museum:"Uygulamalı Sanatlar Müzesi",place_park:"Barış Parkı",nearby_m:"m",nearby_km:"km",nearby_min:"dk"}
+};
+Object.keys(NEARBY_I18N).forEach(function (lang) { if (I18N[lang]) Object.assign(I18N[lang], NEARBY_I18N[lang]); });
+
+const HK_I18N = {
+  ru: {hk_hours_warn:"Хаускипинг работает с 08:00 до 20:00"},
+  uz: {hk_hours_warn:"Housekeeping 08:00 dan 20:00 gacha ishlaydi"},
+  en: {hk_hours_warn:"Housekeeping is available from 08:00 to 20:00"},
+  zh: {hk_hours_warn:"客房服务时间为 08:00 至 20:00"},
+  ar: {hk_hours_warn:"خدمة التدبير المنزلي تعمل من 08:00 إلى 20:00"},
+  fr: {hk_hours_warn:"Le housekeeping est disponible de 08:00 à 20:00"},
+  es: {hk_hours_warn:"El housekeeping está disponible de 08:00 a 20:00"},
+  de: {hk_hours_warn:"Housekeeping ist von 08:00 bis 20:00 Uhr verfügbar"},
+  kk: {hk_hours_warn:"Хаускипинг 08:00-ден 20:00-ге дейін жұмыс істейді"},
+  tr: {hk_hours_warn:"Housekeeping 08:00–20:00 saatleri arasında hizmet verir"}
+};
+Object.keys(HK_I18N).forEach(function (lang) { if (I18N[lang]) Object.assign(I18N[lang], HK_I18N[lang]); });
+
+const WELLNESS_I18N = {
+  ru: {service_wellness:"Бассейн и сауна",wellness_title:"Бассейн, сауна, хаммам",wellness_hours:"Работает с 10:00 до 22:00",wellness_closed:"Сейчас не работает",wellness_time_label:"Время визита",wellness_send:"Забронировать",wellness_oos:"Out of service",wellness_hours_warn:"Работает с 10:00 до 22:00"},
+  uz: {service_wellness:"Basseyn va sauna",wellness_title:"Basseyn, sauna, hammom",wellness_hours:"10:00 dan 22:00 gacha ochiq",wellness_closed:"Hozir ishlamaydi",wellness_time_label:"Tashrif vaqti",wellness_send:"Band qilish",wellness_oos:"Out of service",wellness_hours_warn:"10:00–22:00 oralig‘ida ishlaydi"},
+  en: {service_wellness:"Pool & sauna",wellness_title:"Pool, sauna, hammam",wellness_hours:"Open 10:00–22:00",wellness_closed:"Currently closed",wellness_time_label:"Visit time",wellness_send:"Book",wellness_oos:"Out of service",wellness_hours_warn:"Open from 10:00 to 22:00"},
+  zh: {service_wellness:"泳池和桑拿",wellness_title:"泳池、桑拿、土耳其浴",wellness_hours:"开放时间 10:00–22:00",wellness_closed:"暂不开放",wellness_time_label:"到访时间",wellness_send:"预约",wellness_oos:"Out of service",wellness_hours_warn:"开放时间为 10:00 至 22:00"},
+  ar: {service_wellness:"المسبح والساونا",wellness_title:"المسبح والساونا والحمام",wellness_hours:"من 10:00 إلى 22:00",wellness_closed:"مغلق حالياً",wellness_time_label:"وقت الزيارة",wellness_send:"حجز",wellness_oos:"Out of service",wellness_hours_warn:"العمل من 10:00 إلى 22:00"},
+  fr: {service_wellness:"Piscine et sauna",wellness_title:"Piscine, sauna, hammam",wellness_hours:"Ouvert de 10:00 à 22:00",wellness_closed:"Fermé pour le moment",wellness_time_label:"Heure de visite",wellness_send:"Réserver",wellness_oos:"Out of service",wellness_hours_warn:"Ouvert de 10:00 à 22:00"},
+  es: {service_wellness:"Piscina y sauna",wellness_title:"Piscina, sauna, hammam",wellness_hours:"Abierto de 10:00 a 22:00",wellness_closed:"Cerrado ahora",wellness_time_label:"Hora de visita",wellness_send:"Reservar",wellness_oos:"Out of service",wellness_hours_warn:"Abierto de 10:00 a 22:00"},
+  de: {service_wellness:"Pool und Sauna",wellness_title:"Pool, Sauna, Hammam",wellness_hours:"Geöffnet 10:00–22:00",wellness_closed:"Derzeit geschlossen",wellness_time_label:"Besuchszeit",wellness_send:"Reservieren",wellness_oos:"Out of service",wellness_hours_warn:"Geöffnet von 10:00 bis 22:00"},
+  kk: {service_wellness:"Бассейн және сауна",wellness_title:"Бассейн, сауна, хаммам",wellness_hours:"10:00–22:00 аралығында",wellness_closed:"Қазір жұмыс істемейді",wellness_time_label:"Келу уақыты",wellness_send:"Брондау",wellness_oos:"Out of service",wellness_hours_warn:"10:00–22:00 аралығында жұмыс істейді"},
+  tr: {service_wellness:"Havuz ve sauna",wellness_title:"Havuz, sauna, hamam",wellness_hours:"10:00–22:00 açık",wellness_closed:"Şu an kapalı",wellness_time_label:"Ziyaret saati",wellness_send:"Rezerve et",wellness_oos:"Out of service",wellness_hours_warn:"10:00–22:00 arası açık"}
+};
+Object.keys(WELLNESS_I18N).forEach(function (lang) { if (I18N[lang]) Object.assign(I18N[lang], WELLNESS_I18N[lang]); });
+
+const LANGS = [
+  {id:"ru", code:"RU", native:"Русский"},
+  {id:"en", code:"EN", native:"English"},
+  {id:"uz", code:"UZ", native:"O‘zbekcha"},
+  {id:"kk", code:"KZ", native:"Қазақша"},
+  {id:"tr", code:"TR", native:"Türkçe"},
+  {id:"zh", code:"CN", native:"中文"},
+  {id:"ar", code:"AR", native:"العربية"},
+  {id:"fr", code:"FR", native:"Français"},
+  {id:"es", code:"ES", native:"Español"},
+  {id:"de", code:"DE", native:"Deutsch"}
+];
+const SUPABASE_URL = "https://demo.invalid";
+const SUPABASE_KEY = "demo";
+const WORKER_URL = "https://demo.invalid/worker";
+
+/* ===== DEMO MODE: все запросы к бэкенду заменены заглушками ===== */
+(function () {
+  function ph(emoji, c) { return "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="' + c + '"/><text x="200" y="175" font-size="90" text-anchor="middle">' + emoji + '</text></svg>'); }
+  var D = [
+    ["hot_appetizers","Demo appetizer",12,"🍤","#f3e3d3"],["hot_appetizers","Demo appetizer 2",14,"🧆","#f3e3d3"],
+    ["salad","Demo salad",11,"🥗","#dfeedd"],["salad","Demo salad 2",13,"🥙","#dfeedd"],
+    ["soup","Demo soup",9,"🍲","#f6e7c8"],["soup","Demo soup 2",10,"🥣","#f6e7c8"],
+    ["main_course","Demo main course",24,"🥩","#ecd5cf"],["main_course","Demo main course 2",22,"🍗","#ecd5cf"],["main_course","Demo main course 3",19,"🐟","#d6e4ee"],
+    ["pasta","Demo pasta",16,"🍝","#f6e7c8"],["pizza","Demo pizza",18,"🍕","#f6dcc8"],
+    ["side_dishes","Demo side dish",6,"🍟","#f6e7c8"],["dessert","Demo dessert",8,"🍰","#f1dde6"],["dessert","Demo dessert 2",9,"🍮","#f1dde6"],
+    ["soft_drinks","Demo lemonade",5,"🍋","#f4f0c8"],["soft_drinks","Demo juice",5,"🧃","#f6dcc8"],
+    ["althaus_tea","Demo tea",4,"🍵","#dfeedd"],["wine","Demo wine",15,"🍷","#e6d0d8"],["beer","Demo beer",7,"🍺","#f4e4b8"],["cocktail_non_alcohol","Demo mocktail",9,"🍹","#d9ecef"]
+  ].map(function (r, i) { return { id: i + 1, category: r[0], name: r[1], price: r[2], image_url: ph(r[3], r[4]), is_available: true }; });
+  function json(o) { return Promise.resolve(new Response(JSON.stringify(o), { status: 200, headers: { "Content-Type": "application/json" } })); }
+  var realFetch = window.fetch.bind(window);
+  window.fetch = function (url, opts) {
+    var u = String(url);
+    if (u.indexOf("demo.invalid") === -1) return realFetch(url, opts);
+    if (u.indexOf("/rest/v1/menu") > -1) return json(D);
+    if (u.indexOf("/rest/v1/rooms") > -1) return json([{ guest_name: "Dear Guest" }]);
+    if (u.indexOf("/rest/v1/wellness") > -1) return json([{ is_available: true }]);
+    if (u.indexOf("/rest/v1/nearby") > -1) return json([]); /* пусто -> остаются встроенные заглушки */
+    if (u.indexOf("/rest/v1/orders") > -1) return json({});
+    return json({ success: true, ok: true }); /* WORKER: заказ «принят» */
+  };
+})();
+const FOOD = ["hot_appetizers","salad","soup","main_course","pasta","pizza","side_dishes","dessert"];
+const BAR_SOFT = ["coffee","althaus_tea","soft_drinks","milkshake","mojito","cocktail_non_alcohol"];
+const BAR_ALC = ["cocktail_alcohol","beer","whiskey","cognac","brandy","rum","vodka","tequila","gin","liqueur","wine"];
+const BAR = BAR_SOFT.concat(BAR_ALC);
+const ALIAS = {soups:"soup",mains:"main_course",main:"main_course",drinks:"soft_drinks",appetizer:"hot_appetizers",appetizers:"hot_appetizers",salads:"salad",desserts:"dessert",tea:"althaus_tea",wines:"wine",beers:"beer",mocktail:"cocktail_non_alcohol",mocktails:"cocktail_non_alcohol",nonalcoholcocktail:"cocktail_non_alcohol",nonalcoholiccocktail:"cocktail_non_alcohol",softcocktail:"cocktail_non_alcohol",cocktail:"cocktail_alcohol",cocktails:"cocktail_alcohol",alcoholcocktail:"cocktail_alcohol"};
+
+// ============================================================================
+// СЛОВАРЬ ПЕРЕВОДОВ БЛЮД И НАПИТКОВ
+// ----------------------------------------------------------------------------
+// Названия блюд приходят из Supabase только на русском (поле "name"), поэтому
+// их нужно переводить отдельно от интерфейса (I18N выше).
+//
+// Здесь можно вручную прописать точный перевод для любого блюда — такие
+// переводы показываются МГНОВЕННО и без интернета, в отличие от «живого»
+// перевода через внешний сервис (он медленнее и может не сработать вовсе,
+// например если сервис заблокирован в сети гостя).
+//
+// КАК ДОБАВИТЬ БЛЮДО:
+// Ключ — ТОЧНОЕ название блюда на русском, ровно как оно записано в Supabase
+// (в таблице menu, поле name — включая заглавные буквы и знаки препинания).
+// Значение — объект с переводами по кодам языков ниже. Языковой код можно
+// пропустить — тогда для него сработает автоматический живой перевод.
+//
+// Коды языков: en, uz, zh, ar, fr, es, de, kk, tr
+//
+// Пример (замените/удалите и впишите свои реальные блюда):
+const DISH_TRANSLATIONS = {
+  "Борщ": {
+    en: "Borscht", uz: "Bo'rsh", zh: "罗宋汤", ar: "بورش",
+    fr: "Bortsch", es: "Borsch", de: "Borschtsch", kk: "Борщ", tr: "Borç"
+  },
+  "Плов": {
+    en: "Plov (Uzbek Pilaf)", uz: "Osh", zh: "手抓饭", ar: "بلوف الأرز الأوزبكي",
+    fr: "Plov (riz pilaf ouzbek)", es: "Plov (pilaf uzbeko)", de: "Plow (usbekischer Pilaw)",
+    kk: "Палау", tr: "Özbek Pilavı"
+  },
+  "Салат Цезарь с курицей": {
+    en: "Chicken Caesar Salad", uz: "Tovuqli Sezar salati", zh: "鸡肉凯撒沙拉", ar: "سلطة سيزر بالدجاج",
+    fr: "Salade César au poulet", es: "Ensalada César con pollo", de: "Chicken Caesar Salat",
+    kk: "Тауық етті Цезарь салаты", tr: "Tavuklu Sezar Salatası"
+  }
+  // Добавляйте новые строки по этому же образцу. Порядок ключей значения не важен.
+};
+
+// Кэш «живых» переводов (заполняется автоматически на лету) и счётчик перерисовок
+// меню — нужен, чтобы устаревший ответ сервера не перезаписал уже другую категорию.
+const dishTranslationCache = {};
+let menuRenderToken = 0;
+
+// Возвращает перевод из ручного словаря, если он есть для этого блюда и языка.
+function dictTranslation(name, lang) {
+  const entry = DISH_TRANSLATIONS[name];
+  return (entry && entry[lang]) ? entry[lang] : null;
+}
+
+// Имя блюда для текущего языка — синхронно, без сети:
+// 1) словарь выше, 2) то, что уже перевели и закэшировали ранее, 3) оригинал на русском.
+function getDishName(item) {
+  if (currentLang === "ru" || !item) return item ? item.name : "";
+  return dictTranslation(item.name, currentLang) || dishTranslationCache[item.name + "|" + currentLang] || item.name;
+}
+
+// «Живой» перевод как запасной вариант для блюд, которых ещё нет в словаре выше.
+// Пробует два независимых бесплатных сервиса по очереди — если один заблокирован
+// или недоступен в сети гостя, используется второй. Если оба не ответили —
+// молча остаёмся на русском названии (без ошибок на экране у гостя).
+async function translateDishName(text, targetLang) {
+  if (!text) return text;
+  const cacheKey = text + "|" + targetLang;
+  if (dishTranslationCache[cacheKey]) return dishTranslationCache[cacheKey];
+
+  const withTimeout = (url, ms) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+  };
+
+  // Попытка 1: Google Translate (неофициальный публичный эндпоинт)
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ru&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await withTimeout(url, 6000);
+    if (res.ok) {
+      const json = await res.json();
+      const translated = json[0].map(seg => seg[0]).join("");
+      if (translated && translated.trim()) {
+        dishTranslationCache[cacheKey] = translated;
+        return translated;
+      }
+    }
+  } catch (e) {}
+
+  // Попытка 2: MyMemory (резервный вариант)
+  try {
+    const url2 = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ru|${targetLang}`;
+    const res2 = await withTimeout(url2, 6000);
+    if (res2.ok) {
+      const json2 = await res2.json();
+      const translated2 = json2 && json2.responseData && json2.responseData.translatedText;
+      if (translated2 && translated2.trim()) {
+        dishTranslationCache[cacheKey] = translated2;
+        return translated2;
+      }
+    }
+  } catch (e) {}
+
+  return text;
+}
+
+// Догоняет переводом позиции, которых нет в словаре и ещё нет в кэше,
+// и точечно обновляет DOM, когда перевод придёт — без перерисовки всей сетки.
+// Алкоголь (бренды/названия напитков) сознательно не трогаем — переводить нечего.
+function translateVisibleItems(items, token) {
+  if (currentLang === "ru") return;
+  items.forEach(item => {
+    if (BAR_ALC.includes(item.cat)) return;
+    if (dictTranslation(item.name, currentLang)) return;
+    if (dishTranslationCache[item.name + "|" + currentLang]) return;
+    translateDishName(item.name, currentLang).then(translated => {
+      if (token !== menuRenderToken) return; // категория/язык уже переключились
+      if (!translated || translated === item.name) return;
+      document.querySelectorAll(`[data-item-id="${item.id}"]`).forEach(el => { el.textContent = translated; });
+    });
+  });
+}
+// ============================================================================
+
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  if (typeof tg.disableVerticalSwipes === "function") tg.disableVerticalSwipes();
+}
+
+let currentLang = "ru";
+let theme = "dark";
+let cart = [];
+let dbMenu = [];
+let currentCategory = "all";
+let barOnly = false;
+let rating = 0;
+let heroIdx = 0;
+
+function t(key) {
+  return (I18N[currentLang] && I18N[currentLang][key]) || (I18N.ru && I18N.ru[key]) || key;
+}
+function money(n) { return (Number(n)||0).toLocaleString("ru-RU") + " " + t("price_uzs"); }
+function guestName() {
+  const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+  if (u && u.username) return "@" + u.username;
+  if (u && u.first_name) return u.first_name;
+  return "Гость";
+}
+function room() { return document.querySelector(".room-number").textContent.trim(); }
+
+// Подтягивает имя гостя из Supabase (таблица rooms) по номеру комнаты из QR-ссылки
+// и подставляет его вместо "Your hotel name" в заголовке. Если имени нет — заголовок
+// остаётся как есть ("Your hotel name"). Имя пишут сами сотрудники через Telegram-бота
+// командой /setguest — см. final.js (Worker).
+async function applyGuestName() {
+  const heroTitle = document.getElementById("heroTitle");
+  const roomNum = room();
+  if (!heroTitle || !roomNum) return;
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/rooms?room_number=eq.${encodeURIComponent(roomNum)}&select=guest_name`;
+    const res = await fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY } });
+    if (!res.ok) return;
+    const rows = await res.json();
+    const name = rows && rows[0] && rows[0].guest_name;
+    if (name && String(name).trim()) heroTitle.textContent = String(name).trim();
+  } catch (e) {}
+}
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("on");
+  setTimeout(() => el.classList.remove("on"), 2200);
+}
+function loading(on) { document.getElementById("load").classList.toggle("on", !!on); }
+
+// Маппинг языков приложения -> BCP-47 локали для Intl.DateTimeFormat
+const LANG_LOCALE = {
+  ru: "ru-RU", en: "en-US", uz: "uz-UZ", kk: "kk-KZ",
+  tr: "tr-TR", zh: "zh-CN", ar: "ar-SA", fr: "fr-FR",
+  es: "es-ES", de: "de-DE"
+};
+
+// Форматирует YYYY-MM-DD строку в красивую локализованную дату
+function formatDateLocalized(isoStr, lang) {
+  if (!isoStr) return "";
+  // isoStr = "2026-08-28", Date.parse трактует как UTC — берём части вручную
+  const [y, m, d] = isoStr.split("-").map(Number);
+  const locale = LANG_LOCALE[lang] || "ru-RU";
+  try {
+    return new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" })
+      .format(new Date(y, m - 1, d));
+  } catch (e) {
+    return isoStr;
+  }
+}
+
+// Обновляет оба display-блока при смене даты или языка
+function updateDateDisplays() {
+  const aDate = document.getElementById("alarmDate").value;
+  const tDate = document.getElementById("taxiDate").value;
+  document.getElementById("alarmDateDisplay").textContent = formatDateLocalized(aDate, currentLang);
+  document.getElementById("taxiDateDisplay").textContent = formatDateLocalized(tDate, currentLang);
+}
+
+function applyI18n() {
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.getAttribute("data-i18n")); });
+  document.getElementById("langBtn").textContent = (LANGS.find(l => l.id === currentLang) || LANGS[0]).code;
+  document.getElementById("langBtn2").textContent = document.getElementById("langBtn").textContent;
+  const langBtn3 = document.getElementById("langBtn3");
+  if (langBtn3) langBtn3.textContent = document.getElementById("langBtn").textContent;
+  if (!document.getElementById("nearbyScreen").classList.contains("hidden")) renderNearby();
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = currentLang === "ar" ? "rtl" : "ltr";
+  document.getElementById("menuTitle").textContent = barOnly ? t("service_bar") : t("service_menu");
+  updateCart();
+  updateDateDisplays();
+  if (!document.getElementById("menuScreen").classList.contains("hidden")) renderCats();
+}
+
+function setLang(id) {
+  currentLang = I18N[id] ? id : "ru";
+  document.getElementById("langMenu").classList.add("hidden");
+  applyI18n();
+  if (!document.getElementById("menuScreen").classList.contains("hidden")) renderMenu();
+}
+function setTheme() {
+  theme = theme === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", theme);
+}
+
+function buildLangMenu() {
+  const box = document.getElementById("langMenu");
+  box.innerHTML = LANGS.map(l => `<button class="lang-opt ${l.id===currentLang?"on":""}" data-lang="${l.id}"><span>${l.native}</span><span>${l.code}</span></button>`).join("");
+  box.querySelectorAll("button").forEach(b => b.onclick = () => setLang(b.dataset.lang));
+}
+document.getElementById("langBtn").onclick = () => { buildLangMenu(); document.getElementById("langMenu").classList.toggle("hidden"); };
+document.getElementById("langBtn2").onclick = () => { buildLangMenu(); document.getElementById("langMenu").classList.toggle("hidden"); };
+document.getElementById("themeBtn").onclick = setTheme;
+document.getElementById("themeBtn2").onclick = setTheme;
+
+const slides = [...document.querySelectorAll("#hero img")];
+const dots = document.getElementById("dots");
+dots.innerHTML = slides.map((_,i) => `<b class="${i===0?"on":""}"></b>`).join("");
+function goHero(i) {
+  heroIdx = (i + slides.length) % slides.length;
+  slides.forEach((s,n) => s.classList.toggle("on", n===heroIdx));
+  [...dots.children].forEach((d,n) => d.classList.toggle("on", n===heroIdx));
+}
+setInterval(() => goHero(heroIdx+1), 5200);
+dots.querySelectorAll("b").forEach((d,i) => d.onclick = () => goHero(i));
+
+function openSheet(id) {
+  document.querySelectorAll(".sheet").forEach(s => s.classList.remove("open"));
+  const el = document.getElementById("sheet-" + id);
+  if (el) el.classList.add("open");
+  if (id === "wellness") {
+    fetchWellness().then(applyWellnessUI);
+    if (!wellnessOn) {
+      document.getElementById("wellnessClosed").classList.remove("hidden");
+      document.getElementById("sendWellness").disabled = true;
+    }
+  }
+}
+function closeSheets() { document.querySelectorAll(".sheet").forEach(s => s.classList.remove("open")); }
+document.querySelectorAll(".sheet .ov").forEach(ov => ov.onclick = closeSheets);
+document.querySelectorAll("[data-open]").forEach(btn => btn.onclick = () => openSheet(btn.dataset.open));
+document.getElementById("roomChip").onclick = () => {
+  document.getElementById("roomInput").value = room();
+  openSheet("room");
+};
+document.getElementById("saveRoom").onclick = () => {
+  const v = document.getElementById("roomInput").value.trim();
+  if (v) document.querySelectorAll(".room-number").forEach(n => n.textContent = v);
+  closeSheets();
+};
+document.getElementById("copyWifi").onclick = async () => {
+  try { await navigator.clipboard.writeText("demo-wifi-pass"); toast(t("wifi_copied")); }
+  catch { toast("demo-wifi-pass"); }
+};
+document.getElementById("cartBar").onclick = () => { renderCart(); openSheet("cart"); };
+
+
+/* ============================================================================
+   📌 ЧТО РЯДОМ — таблица public.nearby в том же Supabase, что меню.
+   В бот ничего не уходит. Мок ниже — только если таблица пустая.
+   Hotel: 41.286404, 69.263019 — Кичик Бешёгоч 40
+   ========================================================================== */
+const HOTEL_ORIGIN = { lat: 41.286404, lng: 69.263019 };
+const NEARBY_PLACES = [
+  { id:"afsona", type:"restaurant", nameKey:"place_afsona", names:null, lat:41.3038, lng:69.2782, images:["./images/nearby/afsona-1.jpg","./images/nearby/afsona-2.jpg","./images/nearby/afsona-3.jpg","./images/nearby/afsona-4.jpg"] },
+  { id:"bon", type:"cafe", nameKey:"place_bon", names:null, lat:41.2892, lng:69.2608, images:["./images/nearby/bon-1.jpg","./images/nearby/bon-2.jpg","./images/nearby/bon-3.jpg","./images/nearby/bon-4.jpg"] },
+  { id:"museum", type:"museum", nameKey:"place_museum", names:null, lat:41.297, lng:69.27, images:["./images/nearby/museum-1.jpg","./images/nearby/museum-2.jpg","./images/nearby/museum-3.jpg","./images/nearby/museum-4.jpg"] },
+  { id:"park", type:"park", nameKey:"place_park", names:null, lat:41.289531, lng:69.254229, images:["./images/nearby/park-1.jpg","./images/nearby/park-2.jpg","./images/nearby/park-3.jpg","./images/nearby/park-4.jpg"] }
+];
+let nearbyPlaces = NEARBY_PLACES.slice();
+function escHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&" + "amp;")
+    .replace(/</g, "&" + "lt;")
+    .replace(/>/g, "&" + "gt;")
+    .replace(/"/g, "&" + "quot;")
+    .replace(/'/g, "&#39;");
+}
+function parseImages(raw) {
+  if (Array.isArray(raw)) return raw.map(String).filter(Boolean).slice(0, 4);
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      var p = JSON.parse(raw);
+      if (Array.isArray(p)) return p.map(String).filter(Boolean).slice(0, 4);
+    } catch (e) {
+      return raw.replace(/^{/, "").replace(/}$/, "").split(",").map(function (s) {
+        return s.trim().replace(/^"|"$/g, "");
+      }).filter(Boolean).slice(0, 4);
+    }
+  }
+  return [];
+}
+function placeDisplayName(p) {
+  if (p.names) {
+    var n = p.names[currentLang] || p.names.ru || p.names.en;
+    if (n) return n;
+  }
+  if (p.nameKey) {
+    var tr = t(p.nameKey);
+    if (tr && tr !== p.nameKey) return tr;
+  }
+  return p.id;
+}
+function mapNearbyRow(row) {
+  var lat = Number(row.lat), lng = Number(row.lng);
+  if (!isFinite(lat) || !isFinite(lng)) return null;
+  var slug = String(row.slug || row.id || "").trim();
+  if (!slug) return null;
+  var names = (typeof row.name === "string" && row.name.trim())
+    ? { ru: row.name.trim() }
+    : (row.name && typeof row.name === "object" && !Array.isArray(row.name)) ? row.name : null;
+  return { id: slug, type: String(row.type || "place"), nameKey: "place_" + slug, names: names, lat: lat, lng: lng, images: parseImages(row.images) };
+}
+async function fetchNearby() {
+  try {
+    var res = await fetch(SUPABASE_URL + "/rest/v1/nearby?select=*&is_available=eq.true&order=sort_order.asc", {
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
+    });
+    if (!res.ok) return;
+    var data = await res.json();
+    var mapped = (data || []).map(mapNearbyRow).filter(Boolean);
+    if (mapped.length) nearbyPlaces = mapped;
+  } catch (e) { /* таблица пустая — остаётся мок */ }
+}
+let nearbyTimers = [];
+function distanceMeters(place) {
+  const R = 6371000;
+  const toRad = function (d) { return d * Math.PI / 180; };
+  const dLat = toRad(place.lat - HOTEL_ORIGIN.lat);
+  const dLng = toRad(place.lng - HOTEL_ORIGIN.lng);
+  const a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(toRad(HOTEL_ORIGIN.lat))*Math.cos(toRad(place.lat))*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+function formatDistance(meters) {
+  const comma = currentLang === "ru" || currentLang === "kk" || currentLang === "uz";
+  if (meters >= 1000) {
+    const km = meters / 1000;
+    const rounded = km >= 10 ? Math.round(km) : Math.round(km * 10) / 10;
+    const num = rounded % 1 === 0 ? String(Math.round(rounded)) : rounded.toFixed(1).replace(".", comma ? "," : ".");
+    return num + " " + t("nearby_km");
+  }
+  const m = Math.max(50, Math.round(meters / 10) * 10);
+  return m + " " + t("nearby_m");
+}
+function formatWalk(meters) {
+  return Math.max(1, Math.round(meters / 80)) + " " + t("nearby_min");
+}
+function directionsUrl(place) {
+  const o = HOTEL_ORIGIN.lat + "," + HOTEL_ORIGIN.lng;
+  const d = place.lat + "," + place.lng;
+  return "https://www.google.com/maps/dir/?api=1&origin=" + o + "&destination=" + d + "&travelmode=walking";
+}
+function stopNearbyCarousels() {
+  nearbyTimers.forEach(function (id) { clearInterval(id); });
+  nearbyTimers = [];
+}
+function renderNearby() {
+  stopNearbyCarousels();
+  const list = document.getElementById("placeList");
+  if (!list) return;
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  list.innerHTML = nearbyPlaces.map(function (p) {
+    const meters = distanceMeters(p);
+    const imgs = p.images.map(function (src, i) {
+      return '<img src="' + escHtml(src) + '" alt="" class="' + (i === 0 ? "on" : "") + '">';
+    }).join("");
+    const dots = p.images.map(function (_, i) {
+      return "<b class=\"" + (i === 0 ? "on" : "") + "\" data-i=\"" + i + "\"></b>";
+    }).join("");
+    return '<article class="place-card" data-id="' + escHtml(p.id) + '">' +
+      '<div class="place-carousel" data-idx="0">' + imgs + '<div class="place-dots">' + dots + "</div></div>" +
+      '<div class="place-body">' +
+        '<div class="place-meta"><div class="place-type">' + escHtml(t("nearby_type_" + p.type)) + "</div>" +
+        '<div class="place-dist">' + formatDistance(meters) + " · " + formatWalk(meters) + "</div></div>" +
+        '<h3 class="place-name">' + escHtml(placeDisplayName(p)) + "</h3>" +
+        '<button type="button" class="btn" data-dir="' + escHtml(p.id) + '">' + t("nearby_directions") + "</button>" +
+      "</div></article>";
+  }).join("");
+  list.querySelectorAll(".place-card").forEach(function (card) {
+    const carousel = card.querySelector(".place-carousel");
+    const slides = [...carousel.querySelectorAll("img")];
+    const dots = [...carousel.querySelectorAll(".place-dots b")];
+    let idx = 0;
+    function go(n) {
+      idx = (n + slides.length) % slides.length;
+      slides.forEach(function (s, i) { s.classList.toggle("on", i === idx); });
+      dots.forEach(function (d, i) { d.classList.toggle("on", i === idx); });
+    }
+    dots.forEach(function (d) { d.onclick = function (e) { e.stopPropagation(); go(+d.dataset.i); }; });
+    let startX = null;
+    carousel.addEventListener("touchstart", function (e) { startX = e.changedTouches[0].clientX; }, { passive: true });
+    carousel.addEventListener("touchend", function (e) {
+      if (startX == null) return;
+      const dx = e.changedTouches[0].clientX - startX;
+      if (Math.abs(dx) > 40) go(idx + (dx < 0 ? 1 : -1));
+      startX = null;
+    });
+    if (!reduce && slides.length > 1) {
+      nearbyTimers.push(setInterval(function () { go(idx + 1); }, 2000));
+    }
+  });
+  list.querySelectorAll("[data-dir]").forEach(function (btn) {
+    btn.onclick = function () {
+      const p = nearbyPlaces.find(function (x) { return x.id === btn.dataset.dir; });
+      if (!p) return;
+      const url = directionsUrl(p);
+      if (tg && tg.openLink) tg.openLink(url);
+      else window.open(url, "_blank");
+    };
+  });
+}
+function scrollToTop() {
+  const jump = function () {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    document.querySelectorAll(".app, .pad, #nearbyScreen, #menuScreen, #home").forEach(function (el) {
+      el.scrollTop = 0;
+    });
+  };
+  jump();
+  requestAnimationFrame(jump);
+  setTimeout(jump, 50);
+}
+function showNearby() {
+  barOnly = false;
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("homeChrome").classList.add("hidden");
+  document.getElementById("menuScreen").classList.add("hidden");
+  document.getElementById("nearbyScreen").classList.remove("hidden");
+  fetchNearby().then(function () { renderNearby(); scrollToTop(); });
+}
+
+function showHome() {
+  barOnly = false;
+  document.getElementById("home").classList.remove("hidden");
+  document.getElementById("homeChrome").classList.remove("hidden");
+  document.getElementById("menuScreen").classList.add("hidden");
+  document.getElementById("nearbyScreen").classList.add("hidden");
+  stopNearbyCarousels();
+  scrollToTop();
+}
+function showMenu(bar) {
+  barOnly = !!bar;
+  currentCategory = bar ? "bar" : "all";
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("homeChrome").classList.add("hidden");
+  document.getElementById("nearbyScreen").classList.add("hidden");
+  stopNearbyCarousels();
+  document.getElementById("menuScreen").classList.remove("hidden");
+  document.getElementById("menuTitle").textContent = barOnly ? t("service_bar") : t("service_menu");
+  renderCats();
+  renderMenu();
+  scrollToTop();
+}
+document.getElementById("openMenu").onclick = () => showMenu(false);
+document.getElementById("openBar").onclick = () => showMenu(true);
+document.getElementById("openNearby").onclick = showNearby;
+document.getElementById("backBtn").onclick = showHome;
+document.getElementById("backBtnNearby").onclick = showHome;
+document.getElementById("langBtn3").onclick = () => { buildLangMenu(); document.getElementById("langMenu").classList.toggle("hidden"); };
+document.getElementById("themeBtn3").onclick = setTheme;
+
+function renderCats() {
+  const wrap = document.getElementById("cats");
+  const keys = barOnly ? ["bar", ...BAR] : ["all", "bar", ...FOOD];
+  wrap.innerHTML = keys.map(k => {
+    const label = barOnly
+      ? (k === "bar" ? t("cat_bar_all") : t("bar_type_" + k))
+      : (k === "all" ? t("cat_all") : k === "bar" ? t("cat_bar_menu") : t("cat_" + k));
+    return `<button class="cat ${currentCategory===k?"on":""}" data-cat="${k}">${label}</button>`;
+  }).join("");
+  wrap.querySelectorAll("button").forEach(b => b.onclick = () => { currentCategory = b.dataset.cat; renderCats(); renderMenu(); });
+}
+
+function qtyBlock(id, qty) {
+  if (!qty) return `<button class="add" data-add="${id}">+</button>`;
+  return `<div class="qty"><button data-d="${id}" data-v="-1">−</button><b>${qty}</b><button data-d="${id}" data-v="1">+</button></div>`;
+}
+function itemCard(item) {
+  const q = (cart.find(c => c.id === item.id) || {}).qty || 0;
+  const img = item.img ? `<img src="${item.img}" alt="" onerror="this.style.opacity=0">` : `<div class="ph"></div>`;
+  return `<article class="item">${img}<div style="flex:1;display:flex;flex-direction:column"><h3 data-item-id="${item.id}">${getDishName(item)}</h3><div class="bot"><span class="price">${money(item.price)}</span>${qtyBlock(item.id,q)}</div></div></article>`;
+}
+function bindQty(root) {
+  root.querySelectorAll("[data-add]").forEach(b => b.onclick = () => addToCart(+b.dataset.add));
+  root.querySelectorAll("[data-d]").forEach(b => b.onclick = () => changeQty(+b.dataset.d, +b.dataset.v));
+}
+function renderMenu() {
+  const list = document.getElementById("menuList");
+  let html = "";
+  let visibleItems = [];
+  if (barOnly && (currentCategory === "bar" || currentCategory === "all")) {
+    html += `<div class="group">${t("bar_group_non_alcohol")}</div>`;
+    BAR_SOFT.forEach(cat => {
+      const items = dbMenu.filter(i => i.cat === cat);
+      if (!items.length) return;
+      html += `<div class="sub">${t("bar_type_"+cat)}</div>` + items.map(itemCard).join("");
+      visibleItems = visibleItems.concat(items);
+    });
+    html += `<div class="group">${t("bar_group_alcohol")}</div>`;
+    BAR_ALC.forEach(cat => {
+      const items = dbMenu.filter(i => i.cat === cat);
+      if (!items.length) return;
+      html += `<div class="sub">${t("bar_type_"+cat)}</div>` + items.map(itemCard).join("");
+      visibleItems = visibleItems.concat(items);
+    });
+  } else if (!barOnly && currentCategory === "all") {
+    visibleItems = dbMenu.filter(i => FOOD.includes(i.cat));
+    html = visibleItems.map(itemCard).join("");
+  } else if (!barOnly && currentCategory === "bar") {
+    visibleItems = dbMenu.filter(i => BAR.includes(i.cat));
+    html = visibleItems.map(itemCard).join("");
+  } else {
+    visibleItems = dbMenu.filter(i => i.cat === currentCategory);
+    html = visibleItems.map(itemCard).join("");
+  }
+  list.innerHTML = html || `<p class="empty">${t("menu_empty")}</p>`;
+  bindQty(list);
+  const token = ++menuRenderToken;
+  translateVisibleItems(visibleItems, token);
+}
+function addToCart(id) {
+  const item = dbMenu.find(i => i.id === id);
+  if (!item) return;
+  const found = cart.find(c => c.id === id);
+  if (found) found.qty++; else cart.push({...item, qty:1});
+  updateCart(); renderMenu();
+}
+function changeQty(id, d) {
+  const found = cart.find(c => c.id === id);
+  if (!found) return;
+  found.qty += d;
+  if (found.qty <= 0) cart = cart.filter(c => c.id !== id);
+  updateCart(); renderMenu();
+  if (document.getElementById("sheet-cart").classList.contains("open")) renderCart();
+}
+function updateCart() {
+  const n = cart.reduce((s,i)=>s+i.qty,0);
+  const sum = cart.reduce((s,i)=>s+i.price*i.qty,0);
+  const bar = document.getElementById("cartBar");
+  if (n>0) {
+    document.getElementById("cartCount").textContent = n;
+    document.getElementById("cartTotalSum").textContent = money(sum);
+    bar.classList.add("show");
+  } else bar.classList.remove("show");
+}
+function renderCart() {
+  const box = document.getElementById("cartItems");
+  if (!cart.length) { box.innerHTML = `<p class="empty">${t("empty_cart")}</p>`; document.getElementById("modalTotal").textContent = money(0); return; }
+  box.innerHTML = cart.map(i => `<div class="line">${i.img?`<img src="${i.img}" alt="">`:`<div class="ph" style="width:56px;height:56px"></div>`}<div style="flex:1"><div class="nm" data-item-id="${i.id}">${getDishName(i)}</div><div class="price">${money(i.price*i.qty)}</div></div>${qtyBlock(i.id,i.qty)}</div>`).join("");
+  document.getElementById("modalTotal").textContent = money(cart.reduce((s,i)=>s+i.price*i.qty,0));
+  bindQty(box);
+}
+document.getElementById("clearCart").onclick = () => {
+  if (!cart.length) return;
+  if (confirm(t("clear_cart_confirm"))) { cart = []; updateCart(); renderCart(); renderMenu(); }
+};
+
+function normalizeCat(raw) {
+  const c = String(raw||"").trim().toLowerCase().replace(/[\s\-]+/g,"_").replace(/_+/g,"_");
+  if (FOOD.includes(c) || BAR.includes(c)) return c;
+  const stripped = c.replace(/_/g,"");
+  const known = FOOD.concat(BAR);
+  const hit = known.find(k => k.replace(/_/g,"") === stripped);
+  if (hit) return hit;
+  return ALIAS[c] || ALIAS[stripped] || "main_course";
+}
+
+async function fetchMenu() {
+  loading(true);
+  try {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/menu?select=*", {
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
+    });
+    const data = await res.json();
+    dbMenu = (data||[]).filter(x => x.is_available !== false).map(x => ({
+      id: x.id, name: x.name, price: Number(x.price)||0, cat: normalizeCat(x.category), img: x.image_url || ""
+    }));
+  } catch (e) {
+    console.error(e);
+    toast(t("err_menu_load"));
+  } finally { loading(false); }
+}
+
+async function postData(reqText, comment, onOk) {
+  loading(true);
+  try {
+    const response = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: reqText, username: guestName(), user_comment: comment || "", comment: comment || "" })
+    });
+    const result = await response.json();
+    if (result.success || result.ok) {
+      toast(t("order_success"));
+      closeSheets();
+      if (onOk) onOk();
+    } else toast(t("err_send"));
+  } catch (e) {
+    toast(t("err_network"));
+  } finally { loading(false); }
+}
+
+function logOrder(total, note) {
+  fetch(SUPABASE_URL + "/rest/v1/orders", {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      room_number: room(),
+      username: guestName(),
+      total_sum: total,
+      items: cart.map(i => ({id:i.id, name:i.name, price:i.price, qty:i.qty})),
+      note: note || null
+    })
+  }).catch(() => {});
+}
+
+function hkHoursOk() {
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return mins >= 8 * 60 && mins < 20 * 60;
+}
+document.getElementById("hkMaids").onclick = () => { if (!hkHoursOk()) return toast(t("hk_hours_warn")); postData(`🧹 <b>HOUSEKEEPING</b>\n🏨 <b>Номер комнаты:</b> ${room()}\n📌 <b>Действие:</b> Позвать горничных\n🌐 <b>Язык интерфейса:</b> ${currentLang.toUpperCase()}`); };
+document.getElementById("hkClean").onclick = () => { if (!hkHoursOk()) return toast(t("hk_hours_warn")); postData(`🧹 <b>HOUSEKEEPING</b>\n🏨 <b>Номер комнаты:</b> ${room()}\n📌 <b>Действие:</b> Убраться в моем номере\n🌐 <b>Язык интерфейса:</b> ${currentLang.toUpperCase()}`); };
+document.getElementById("callReception").onclick = () => postData(`📞 <b>ВЫЗОВ РЕСЕПШЕНА</b>\n🏨 <b>Номер комнаты:</b> ${room()}\n☎️ <b>Запрос на номер:</b> 1111\n🌐 <b>Язык интерфейса:</b> ${currentLang.toUpperCase()}`);
+let wellnessOn = true;
+async function fetchWellness() {
+  try {
+    const res = await fetch(SUPABASE_URL + "/rest/v1/wellness?id=eq.spa&select=is_available", {
+      headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY }
+    });
+    const data = await res.json();
+    if (Array.isArray(data) && data[0] && data[0].is_available === false) wellnessOn = false;
+    else wellnessOn = true;
+  } catch (e) {
+    wellnessOn = true;
+  }
+  applyWellnessUI();
+}
+function applyWellnessUI() {
+  const badge = document.getElementById("wellnessOos");
+  const closed = document.getElementById("wellnessClosed");
+  const send = document.getElementById("sendWellness");
+  if (badge) badge.classList.toggle("hidden", wellnessOn);
+  if (closed) closed.classList.toggle("hidden", wellnessOn);
+  if (send) send.disabled = !wellnessOn;
+}
+document.getElementById("sendWellness").onclick = () => {
+  if (!wellnessOn) return toast(t("wellness_closed"));
+  const time = document.getElementById("wellnessTime").value;
+  if (!time) return toast(t("err_alarm_fields"));
+  const [hh, mm] = time.split(":").map(Number);
+  const mins = hh * 60 + mm;
+  if (mins < 10 * 60 || mins >= 22 * 60) return toast(t("wellness_hours_warn"));
+  postData(`🧖 <b>БАССЕЙН / САУНА / ХАММАМ</b>\n🏨 <b>Номер комнаты:</b> ${room()}\n🕒 <b>Время визита:</b> ${time}\n📌 <b>Зона:</b> бассейн, сауна, хаммам\n🌐 <b>Язык интерфейса:</b> ${currentLang.toUpperCase()}`, time);
+};
+
+document.getElementById("sendAlarm").onclick = () => {
+  const time = document.getElementById("alarmTime").value;
+  const date = document.getElementById("alarmDate").value;
+  const note = document.getElementById("alarmNote").value.trim();
+  if (!time || !date) return toast(t("err_alarm_fields"));
+  postData(`⏰ <b>ЗАПРОС БУДИЛЬНИКА</b>\n🏨 <b>Номер комнаты:</b> ${room()}\n📅 <b>Дата:</b> ${date}\n🕒 <b>Время:</b> ${time}\n📝 <b>Заметка:</b> ${note || "Без примечания"}\n🌐 <b>Язык интерфейса:</b> ${currentLang.toUpperCase()}`, note);
+};
+document.getElementById("sendTaxi").onclick = () => {
+  const dest = document.getElementById("taxiDest").value.trim();
+  const date = document.getElementById("taxiDate").value;
+  const time = document.getElementById("taxiTime").value || "Ближайшее";
+  const pax = document.getElementById("taxiPassengers").value;
+  postData(`🚖 <b>ЗАКАЗ ТАКСИ</b>\n🏨 <b>Номер комнаты:</b> ${room()}\n📍 <b>Направление:</b> ${dest || "Не указано"}\n📅 <b>Дата:</b> ${date}\n🕒 <b>Время подачи:</b> ${time}\n👥 <b>Пассажиров:</b> ${pax}\n🌐 <b>Язык интерфейса:</b> ${currentLang.toUpperCase()}`, dest);
+};
+document.getElementById("stars").innerHTML = [1,2,3,4,5].map(n => `<button data-s="${n}">★</button>`).join("");
+document.getElementById("stars").onclick = (e) => {
+  const s = e.target.closest("button"); if (!s) return;
+  rating = +s.dataset.s;
+  [...document.getElementById("stars").children].forEach((b,i) => b.classList.toggle("on", i < rating));
+};
+document.getElementById("sendReview").onclick = () => {
+  if (!rating) return toast(t("select_stars_warn"));
+  const comment = document.getElementById("reviewComment").value.trim();
+  const starsStr = "★".repeat(rating) + "☆".repeat(5-rating);
+  postData(`⭐ <b>НОВЫЙ ОТЗЫВ</b>\n${roomLabelLine()}\n🌟 <b>Оценка:</b> ${starsStr} (${rating}/5)\n💬 <b>Отзыв:</b> ${comment || "Без комментария"}\n🌐 <b>Язык интерфейса:</b> ${currentLang.toUpperCase()}`, comment);
+};
+document.getElementById("sendProblem").onclick = () => {
+  const comment = document.getElementById("problemComment").value.trim();
+  if (!comment) return toast(t("err_problem_comment"));
+  postData(`⚠️ <b>ЖАЛОБА / ПРОБЛЕМА</b>\n🏨 <b>Номер комнаты:</b> ${room()}\n🚨 <b>Описание:</b> ${comment}\n🌐 <b>Язык интерфейса:</b> ${currentLang.toUpperCase()}`, comment, () => { document.getElementById("problemComment").value = ""; });
+};
+document.getElementById("sendOrder").onclick = () => {
+  if (!cart.length) return;
+  const note = document.getElementById("orderNote").value.trim();
+  const list = cart.map(i => `• ${i.name} x${i.qty} — ${(i.price*i.qty).toLocaleString("ru-RU")} UZS`).join("\n");
+  const total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+  const barOnlyOrder = cart.every(i => BAR.includes(i.cat));
+  const head = barOnlyOrder ? "🍸 <b>ЗАКАЗ БАРА</b>" : "🍽️ <b>ЗАКАЗ ЕДЫ</b>";
+  const req = `${head}\n${roomLabelLine()}\n\n<b>Состав заказа:</b>\n${list}\n\n💰 <b>Итого:</b> ${total.toLocaleString("ru-RU")} UZS\n📝 <b>Примечание:</b> ${note || "Без примечания"}\n🌐 <b>Язык интерфейса:</b> ${currentLang.toUpperCase()}`;
+  logOrder(total, note);
+  postData(req, note, () => { cart = []; document.getElementById("orderNote").value = ""; updateCart(); renderMenu(); });
+};
+
+function getRoomFromUrl() {
+  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) return tg.initDataUnsafe.start_param;
+  const q = new URLSearchParams(location.search);
+  if (q.get("room")) return q.get("room");
+  const h = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if (h.get("room")) return h.get("room");
+  return "101";
+}
+
+// QR-код стола ресторана: ?table=1 (или #table=1). Для номеров комнат этого параметра
+// в ссылке нет, поэтому вся текущая логика для 96 номеров не меняется вообще.
+// Зона по QR-коду: ?table=1 — стол ресторана, ?lobby=1 — стол в лобби, ?bar=1 — барная стойка.
+// Для обычных номеров (96 существующих QR) ни одного из этих параметров в ссылке нет,
+// поэтому getZoneMode() вернёт null и вся текущая логика для номеров не меняется вообще.
+function getZoneMode() {
+  const q = new URLSearchParams(location.search);
+  const h = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if (q.has("table") || h.has("table")) return "table";
+  if (q.has("lobby") || h.has("lobby")) return "lobby";
+  if (q.has("bar") || h.has("bar")) return "bar";
+  return null;
+}
+function isRestaurantTable() { return getZoneMode() !== null; } // оставлено для совместимости
+
+// Для стола ресторана / лобби / барной стойки оставляем только Wi-Fi, Меню, Бар, Что рядом и Отзыв —
+// прячем Housekeeping, Такси, Ресепшн, Проблему, Будильник, Бассейн/сауну.
+function applyTableModeIfNeeded() {
+  if (!getZoneMode()) return;
+  document.querySelectorAll('.grid > .svc').forEach(btn => {
+    if (btn.getAttribute("data-open") === "review") return; // отзыв оставляем
+    btn.classList.add("hidden");
+  });
+  // Номер стола/лобби/бара (roomChip) больше НЕ прячем — он должен быть виден,
+  // чтобы гость и персонал видели, какой это стол.
+}
+
+// Строка "кому пришёл запрос" для сообщений персоналу: для обычных номеров — как было,
+// для стола/лобби/стойки — подменяется на понятную персоналу метку.
+function roomLabelLine() {
+  const zone = getZoneMode();
+  if (zone === "table") return `🍽️ <b>Столик (ресторан):</b> ${room()}`;
+  if (zone === "lobby") return `🛋️ <b>Столик (лобби):</b> ${room()}`;
+  if (zone === "bar") return `🍸 <b>Барная стойка</b>`;
+  return `🏨 <b>Номер комнаты:</b> ${room()}`;
+}
+
+const today = new Date().toISOString().slice(0,10);
+document.getElementById("alarmDate").value = today;
+document.getElementById("taxiDate").value = today;
+// При выборе даты через нативный пикер — обновляем display
+document.getElementById("alarmDate").addEventListener("change", updateDateDisplays);
+document.getElementById("taxiDate").addEventListener("change", updateDateDisplays);
+// Тап по display открывает нативный пикер (iOS Safari совместимость)
+function openDatePicker(inputId) {
+  var inp = document.getElementById(inputId);
+  inp.style.position = "fixed";
+  inp.style.opacity = "0";
+  inp.style.width = "100%";
+  inp.style.height = "100%";
+  inp.style.top = "0";
+  inp.style.left = "0";
+  inp.style.zIndex = "9999";
+  inp.style.pointerEvents = "auto";
+  inp.focus();
+  try { if (inp.showPicker) inp.showPicker(); } catch(e) {}
+  setTimeout(function() {
+    inp.style.position = "absolute";
+    inp.style.width = "1px";
+    inp.style.height = "1px";
+    inp.style.zIndex = "";
+    inp.style.pointerEvents = "none";
+  }, 800);
+}
+document.getElementById("alarmDateDisplay").addEventListener("click", function() { openDatePicker("alarmDate"); });
+document.getElementById("taxiDateDisplay").addEventListener("click", function() { openDatePicker("taxiDate"); });
+document.querySelectorAll(".room-number").forEach(n => n.textContent = getRoomFromUrl());
+applyGuestName();
+applyTableModeIfNeeded();
+document.documentElement.setAttribute("data-theme", "dark");
+applyI18n(); // вызывает updateDateDisplays внутри
+fetchMenu();
+fetchNearby();
+fetchWellness();
+history.replaceState({appLayer:"root"}, "");
+history.pushState({appLayer:"root"}, "");
+window.addEventListener("popstate", () => {
+  if (document.querySelector(".sheet.open")) { closeSheets(); history.pushState({appLayer:"root"}, ""); return; }
+  if (!document.getElementById("menuScreen").classList.contains("hidden") || !document.getElementById("nearbyScreen").classList.contains("hidden")) { showHome(); history.pushState({appLayer:"root"}, ""); return; }
+  history.pushState({appLayer:"root"}, "");
+});
+</script>
+</body>
+</html>
